@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String
+  role         UserRole     @default(CUSTOMER)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  orders       Order[]
+  orderEvents  OrderEvent[]
+}
+
+model ProductPackage {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  priceIdr    Int
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      Order[]
+}
+
+model Order {
+  id              String       @id @default(cuid())
+  orderCode       String       @unique
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  packageId       String
+  productPackage  ProductPackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  packageName     String
+  amountIdr       Int
+  growId          String
+  customerEmail   String
+  paymentMethod   String?
+  status          OrderStatus  @default(PENDING_PAYMENT)
+  adminNotes      String?
+  confirmedPaidAt DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  events          OrderEvent[]
+
+  @@index([status, createdAt])
+  @@index([customerEmail, createdAt])
+  @@index([userId, createdAt])
+}
+
+model OrderEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actor     User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  from      OrderStatus?
+  to        OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  isPublished Boolean  @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
