@@ -1,4 +1,4 @@
-# GrowTop — Next.js + TypeScript
+# GTPLAY STORE — Next.js + TypeScript
 
 Backend and admin panel for one Growtopia Private Server. Orders are fulfilled manually by an administrator. The data model stores only the player's GrowID; there is no game selector or server field.
 
