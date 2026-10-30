@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "GrowTop — Top Up Growtopia Private Server",
+  title: "GTPLAY — GTPLAY Private Server",
   description: "Top up Growtopia Private Server dengan alur pesanan yang jelas dan pelacakan status.",
 };
 
