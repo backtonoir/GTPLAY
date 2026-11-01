@@ -1,4 +1,4 @@
-// GTPLAY v3.3 (landing page)
+// GTPLAY v3.4 (server status)
 // GTPLAY CART STATE
 // --------------------------------------------------
 // Keranjang disimpan di localStorage HANYA sebagai daftar

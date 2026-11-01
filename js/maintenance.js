@@ -1,4 +1,4 @@
-// GTPLAY v3.3 (landing page)
+// GTPLAY v3.4 (server status)
 // ==================================================
 // MAINTENANCE PAGE (maintenance.html)
 // --------------------------------------------------

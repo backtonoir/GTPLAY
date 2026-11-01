@@ -1,4 +1,4 @@
-// GTPLAY v3.3 (landing page)
+// GTPLAY v3.4 (server status)
 // ==================================================
 // GTPLAY DATA LAYER
 // --------------------------------------------------
@@ -114,13 +114,14 @@ GT.api = (function () {
   // SERVER STATUS (GTPS Cloud)
   // --------------------------------------------------
   // Website membaca JSON ternormalisasi dari SERVER_STATUS_URL:
-  //   { "online": true, "players": 123, "worlds": 45, "updatedAt": "…" }
-  // URL ini nanti adalah perantara (Supabase Edge Function) yang
-  // menyimpan API key GTPS Cloud — key tidak pernah ada di browser.
+  //   { "online": true, "players": 12, "peak": 40, "worlds": null, "uptime": "3h 2m" }
+  // Default: /api/server-status (Vercel function di folder api/)
+  // yang mengambil data dari API GTPS Cloud.
   // ------------------------------------------------
 
   async function getServerStatus() {
     const url = GT.config.SERVER_STATUS_URL;
+    // toNumber: null/"" bukan angka.
     if (!url) return { configured: false };
 
     const controller = new AbortController();
@@ -130,13 +131,18 @@ GT.api = (function () {
       const response = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      const toNumber = value => (Number.isFinite(Number(value)) ? Number(value) : null);
+      const toNumber = value => (value === null || value === undefined || value === "" ? null : (Number.isFinite(Number(value)) ? Number(value) : null));
+
+      // Mendukung JSON dari /api/server-status maupun format asli GTPS Cloud.
+      const rawStatus = data.server_status !== undefined ? String(data.server_status).toLowerCase() === "online" : data.online;
 
       return {
         configured: true,
-        online: Boolean(data.online),
-        players: toNumber(data.players),
+        online: Boolean(rawStatus),
+        players: toNumber(data.players ?? data.players_online),
+        peak: toNumber(data.peak ?? data.record_online),
         worlds: toNumber(data.worlds),
+        uptime: typeof data.uptime === "string" ? data.uptime : null,
         updatedAt: data.updatedAt || new Date().toISOString()
       };
     } catch (error) {

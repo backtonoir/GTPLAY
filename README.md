@@ -126,7 +126,7 @@ Semua di **`js/config.js`**.
 
 Halaman utama sekarang landing page; toko pindah ke `store.html`.
 
-- **Status server / player / world** — dibaca dari `SERVER_STATUS_URL` di `js/config.js` (JSON `{ "online": true, "players": 123, "worlds": 45 }`). Kosong = "Coming soon". Untuk GTPS Cloud akan dibuat perantara (Supabase Edge Function) agar API key tidak pernah ada di website.
+- **Status server** — `api/server-status.js` (Vercel Function) mengambil data dari API GTPS Cloud `https://api.gtps.cloud/g-api/<SERVER_ID>/status` lalu landing page menampilkan Online/Offline, player online, peak online (rekor), dan uptime. Di-cache 30 detik. Ganti server ID lewat Environment Variable `GTPS_SERVER_ID` di Vercel (default `18878`). API GTPS Cloud saat ini belum menyediakan jumlah world aktif — jika nanti tersedia, tile "Active worlds" otomatis muncul.
 - **Harga Blue Gem Lock** — Admin → **BGL Price**: isi tanggal + harga (Rupiah). Satu harga per tanggal; grafik muncul setelah ada minimal 2 data.
 - **Download** — Admin → **Downloads**: isi link Windows / Android (wajib `https://`). Link kosong tampil "Coming soon" (iOS & macOS).
 - **Pengumuman** — Admin → **Announcements**: tambah, edit, hapus, atau simpan sebagai draft. Tampil di landing page (3 terbaru) dan `announcement.html`.
@@ -187,7 +187,7 @@ Tambahkan blok `redirects` ke `vercel.json` (sejajar dengan `"headers"`), lalu c
 ```json
 "redirects": [
   {
-    "source": "/((?!maintenance\\.html|admin\\.html|style\\.css|favicon\\.svg|js/|images/).*)",
+    "source": "/((?!maintenance\\.html|admin\\.html|style\\.css|favicon\\.svg|js/|images/|api/).*)",
     "destination": "/maintenance.html",
     "permanent": false
   }

@@ -1,4 +1,4 @@
-// GTPLAY v3.3 (landing page)
+// GTPLAY v3.4 (server status)
 // ==================================================
 // GTPLAY LANDING PAGE (index.html)
 // --------------------------------------------------
@@ -32,7 +32,7 @@
       statusRoot.replaceChildren(
         statTile("Server", h("span", { class: "server-state is-unknown" }, h("span", { class: "dot", "aria-hidden": "true" }), "Coming soon")),
         statTile("Players online", "—"),
-        statTile("Active worlds", "—"),
+        statTile("Peak online", "—"),
         h("p", { class: "server-note" }, "Live server stats will appear here soon.")
       );
       return;
@@ -42,18 +42,25 @@
       statusRoot.replaceChildren(
         statTile("Server", h("span", { class: "server-state is-unknown" }, h("span", { class: "dot", "aria-hidden": "true" }), "Unavailable")),
         statTile("Players online", "—"),
-        statTile("Active worlds", "—"),
+        statTile("Peak online", "—"),
         h("p", { class: "server-note" }, "Couldn't reach the status service. Retrying shortly.")
       );
       return;
     }
 
+    const hasWorlds = status.worlds !== null && status.worlds !== undefined;
+    const notes = [];
+    if (status.uptime) notes.push(`Uptime ${status.uptime}`);
+    notes.push(`Updated ${formatDateTime(status.updatedAt)}`);
+
     statusRoot.replaceChildren(
       statTile("Server", h("span", { class: `server-state ${status.online ? "is-online" : "is-offline"}` },
         h("span", { class: "dot", "aria-hidden": "true" }), status.online ? "Online" : "Offline")),
       statTile("Players online", status.players === null ? "—" : number(status.players)),
-      statTile("Active worlds", status.worlds === null ? "—" : number(status.worlds)),
-      h("p", { class: "server-note" }, `Updated ${formatDateTime(status.updatedAt)}`)
+      hasWorlds
+        ? statTile("Active worlds", number(status.worlds))
+        : statTile("Peak online", status.peak === null || status.peak === undefined ? "—" : number(status.peak)),
+      h("p", { class: "server-note" }, notes.join(" · "))
     );
   }
 

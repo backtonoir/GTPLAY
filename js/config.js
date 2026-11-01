@@ -1,4 +1,4 @@
-// GTPLAY v3.3 (landing page)
+// GTPLAY v3.4 (server status)
 // ==================================================
 // GTPLAY CONFIGURATION
 // --------------------------------------------------
@@ -33,12 +33,11 @@ GT.config = Object.freeze({
   // ------------------------------------------------
   // STATUS SERVER (landing page)
   // ------------------------------------------------
-  // URL yang mengembalikan JSON:
-  //   { "online": true, "players": 123, "worlds": 45 }
-  // Nanti diisi dengan URL perantara (Supabase Edge Function)
-  // untuk API GTPS Cloud. Kosong = tampil "Coming soon".
-  // JANGAN taruh API key GTPS Cloud di file ini.
-  SERVER_STATUS_URL: "",
+  // "/api/server-status" = Vercel function (folder api/) yang
+  // mengambil data dari API GTPS Cloud. Server ID diatur di
+  // api/server-status.js atau env GTPS_SERVER_ID di Vercel.
+  // Kosongkan untuk menampilkan "Coming soon".
+  SERVER_STATUS_URL: "/api/server-status",
   SERVER_STATUS_REFRESH_SECONDS: 60,
 
   // Petunjuk singkat cara memakai redeem code, tampil di bawah code
