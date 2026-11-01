@@ -1,0 +1,256 @@
+// ==================================================
+// GTPLAY STORE PAGE (index.html)
+// --------------------------------------------------
+// Search, category filter, sorting, product cards.
+// ==================================================
+
+(function () {
+  const { h, $, formatRupiah, toast, debounce } = GT.utils;
+
+  const LOW_STOCK = 5;
+
+  const state = {
+    products: [],
+    search: "",
+    category: "All",
+    sort: "featured",
+    justAdded: null
+  };
+
+  const grid = $("#productGrid");
+  const chips = $("#categoryChips");
+  const meta = $("#resultMeta");
+  const searchInput = $("#searchInput");
+  const sortSelect = $("#sortSelect");
+
+  // ------------------------------------------------
+  // FILTER + SORT
+  // ------------------------------------------------
+
+  function visibleProducts() {
+    const query = state.search.trim().toLowerCase();
+
+    const filtered = state.products.filter(product => {
+      const inCategory = state.category === "All" || product.category === state.category;
+      const matches = !query ||
+        product.name.toLowerCase().includes(query) ||
+        product.category.toLowerCase().includes(query) ||
+        (product.description || "").toLowerCase().includes(query);
+      return inCategory && matches;
+    });
+
+    const sorters = {
+      featured: (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0),
+      "price-asc": (a, b) => a.price - b.price,
+      "price-desc": (a, b) => b.price - a.price,
+      "name-asc": (a, b) => a.name.localeCompare(b.name, "id", { numeric: true }),
+      "stock-desc": (a, b) => b.stock - a.stock
+    };
+
+    // Item habis selalu di akhir daftar.
+    return filtered.sort((a, b) => {
+      const soldOut = (a.stock <= 0) - (b.stock <= 0);
+      return soldOut || (sorters[state.sort] || sorters.featured)(a, b);
+    });
+  }
+
+  // ------------------------------------------------
+  // RENDER
+  // ------------------------------------------------
+
+  function renderChips() {
+    const categories = ["All", ...new Set(state.products.map(p => p.category))];
+
+    chips.replaceChildren(...categories.map(category =>
+      h("button", {
+        type: "button",
+        class: "chip",
+        "aria-pressed": String(state.category === category),
+        onclick: () => {
+          state.category = category;
+          renderChips();
+          renderGrid();
+        }
+      }, category)
+    ));
+  }
+
+  function stockBadge(product) {
+    if (product.stock <= 0) return h("span", { class: "stock-badge out" }, "Sold out");
+    if (product.stock <= LOW_STOCK) return h("span", { class: "stock-badge low" }, `Only ${product.stock} left`);
+    return h("span", { class: "stock-badge" }, `In stock · ${product.stock}`);
+  }
+
+  function cartQuantity(productId) {
+    const line = GT.cart.lines().find(item => item.product.id === productId);
+    return line ? line.quantity : 0;
+  }
+
+  function addButton(product) {
+    const inCart = cartQuantity(product.id);
+    const soldOut = product.stock <= 0;
+    const maxed = !soldOut && inCart >= product.stock;
+
+    let label = "Add to Cart";
+    if (soldOut) label = "Sold out";
+    else if (state.justAdded === product.id) label = "Added ✓";
+    else if (maxed) label = "Max in cart";
+
+    return h("button", {
+      type: "button",
+      class: "btn btn-primary btn-sm",
+      disabled: soldOut || maxed,
+      "aria-label": `${label}: ${product.name}`,
+      onclick: () => {
+        state.justAdded = product.id;
+        const result = GT.cart.add(product.id, 1);
+        if (!result.ok) {
+          state.justAdded = null;
+          updateButtons();
+        }
+        toast(result.message, result.ok ? "success" : "error");
+        clearTimeout(addedTimer);
+        addedTimer = setTimeout(() => {
+          state.justAdded = null;
+          updateButtons();
+        }, 1100);
+      }
+    }, label);
+  }
+
+  let addedTimer = null;
+
+  // Hanya tombol yang diperbarui saat keranjang berubah —
+  // kartu & gambar tidak dirender ulang.
+  function updateButtons() {
+    grid.querySelectorAll("[data-add-slot]").forEach(slot => {
+      const product = state.products.find(p => p.id === slot.dataset.addSlot);
+      if (product) slot.replaceChildren(addButton(product));
+    });
+  }
+
+  function productCard(product) {
+    return h("article", { class: `product-card${product.stock <= 0 ? " sold-out" : ""}` },
+      h("div", { class: "product-media" },
+        GT.utils.imageWithFallback({ src: product.image, alt: product.name, fallback: product.fallback }),
+        h("span", { class: "product-tag" }, product.category),
+        stockBadge(product)
+      ),
+      h("div", { class: "product-body" },
+        h("h3", {}, product.name),
+        product.description ? h("p", { class: "product-desc" }, product.description) : null,
+        h("div", { class: "product-foot" },
+          h("span", { class: "product-price" }, formatRupiah(product.price)),
+          h("div", { class: "add-slot", dataset: { addSlot: product.id } }, addButton(product))
+        )
+      )
+    );
+  }
+
+  function renderGrid() {
+    const list = visibleProducts();
+    grid.setAttribute("aria-busy", "false");
+
+    if (state.products.length === 0) {
+      meta.textContent = "";
+      grid.replaceChildren(
+        h("div", { class: "state-block" },
+          h("p", { class: "state-title" }, "No items yet"),
+          h("p", { class: "state-text" }, "New items are coming soon. Check the Announcement page for restocks.")
+        )
+      );
+      return;
+    }
+
+    meta.textContent = `${list.length} item${list.length === 1 ? "" : "s"}${state.category !== "All" ? ` in ${state.category}` : ""}`;
+
+    if (list.length === 0) {
+      grid.replaceChildren(
+        h("div", { class: "state-block" },
+          h("p", { class: "state-title" }, "No items found"),
+          h("p", { class: "state-text" }, "Try a different keyword or category."),
+          h("button", {
+            type: "button",
+            class: "btn btn-outline",
+            onclick: () => {
+              state.search = "";
+              state.category = "All";
+              searchInput.value = "";
+              renderChips();
+              renderGrid();
+            }
+          }, "Reset filters")
+        )
+      );
+      return;
+    }
+
+    grid.replaceChildren(...list.map(productCard));
+  }
+
+  function renderSkeletons() {
+    grid.setAttribute("aria-busy", "true");
+    grid.replaceChildren(...Array.from({ length: 6 }, () =>
+      h("div", { class: "product-card skeleton-card", "aria-hidden": "true" },
+        h("div", { class: "product-media skeleton" }),
+        h("div", { class: "product-body" },
+          h("div", { class: "skeleton skeleton-line" }),
+          h("div", { class: "skeleton skeleton-line short" }),
+          h("div", { class: "skeleton skeleton-line short" })
+        )
+      )
+    ));
+  }
+
+  function renderError() {
+    grid.setAttribute("aria-busy", "false");
+    meta.textContent = "";
+    grid.replaceChildren(
+      h("div", { class: "state-block" },
+        h("p", { class: "state-title" }, "Couldn't load the store"),
+        h("p", { class: "state-text" }, "Please check your connection and try again."),
+        h("button", { type: "button", class: "btn btn-outline", onclick: load }, "Try again")
+      )
+    );
+  }
+
+  // ------------------------------------------------
+  // INIT
+  // ------------------------------------------------
+
+  function load(catalogPromise) {
+    renderSkeletons();
+    const promise = catalogPromise instanceof Promise ? catalogPromise : GT.layout.loadCatalog(true);
+
+    promise
+      .then(products => {
+        state.products = products;
+        renderChips();
+        renderGrid();
+      })
+      .catch(renderError);
+  }
+
+  searchInput.addEventListener("input", debounce(() => {
+    state.search = searchInput.value;
+    renderGrid();
+  }, 150));
+
+  sortSelect.addEventListener("change", () => {
+    state.sort = sortSelect.value;
+    renderGrid();
+  });
+
+  // Tombol "Add" ikut diperbarui saat isi keranjang berubah.
+  GT.cart.onChange(() => {
+    if (state.products.length) updateButtons();
+  });
+
+  const catalog = GT.layout.init();
+  catalog.catch(() => {});
+  load(catalog);
+
+  if (GT.utils.getParam("cart") === "open") {
+    catalog.finally(() => GT.layout.openCart());
+  }
+})();
