@@ -29,6 +29,8 @@ GT.config = Object.freeze({
     youtube: ""
   },
 
+  REDEEM_HELP: "Salin code di atas lalu redeem di game GTPLAY. Hubungi admin jika code tidak bisa dipakai.",
+
   // Batas ukuran bukti pembayaran (MB).
   MAX_PROOF_MB: 5,
 
