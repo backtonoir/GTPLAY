@@ -43,8 +43,8 @@ GT.config = Object.freeze({
   // SUPABASE_ANON_KEY adalah *publishable/anon key* — memang aman
   // untuk frontend karena semua akses dikunci oleh RLS & RPC.
   // JANGAN PERNAH menaruh "service_role" key di sini.
-  SUPABASE_URL: "",
-  SUPABASE_ANON_KEY: "",
+  SUPABASE_URL: "https://nyzpyibmytdjkexiqsku.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55enB5aWJteXRkamtleGlxc2t1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDExNDIsImV4cCI6MjEwOTExNzE0Mn0.KXCxaZelsJl_H-WkNV6ghXXuGWGNlBZt9axsfGFGsZY",
 
   // Versi library Supabase yang dimuat dari CDN (hanya mode produksi).
   SUPABASE_JS_URL: "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"
