@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.5.1 (lua worlds fix)
 // ==================================================
 // GTPLAY DATA LAYER
 // --------------------------------------------------
@@ -799,7 +799,7 @@ GT.api = (function () {
               configured: true,
               online: Boolean(stats.online),
               players: stats.online ? stats.players : 0,
-              worlds: stats.online ? stats.worlds : 0,
+              worlds: stats.worlds === null || stats.worlds === undefined ? null : (stats.online ? stats.worlds : 0),
               peak: stats.peak,
               uptime: null,
               updatedAt: stats.reportedAt

@@ -478,6 +478,10 @@ create table if not exists public.server_stats (
 
 insert into public.server_stats (id) values (true) on conflict (id) do nothing;
 
+-- Jumlah world boleh kosong (tidak semua engine punya fungsi world list).
+alter table public.server_stats alter column active_worlds drop not null;
+alter table public.server_stats alter column active_worlds drop default;
+
 alter table public.server_stats enable row level security;
 -- Tanpa policy: hanya lewat RPC.
 
@@ -501,7 +505,8 @@ as $$
 $$;
 
 -- Dipanggil oleh script Lua server (role anon + token rahasia).
-create or replace function public.report_server_stats(p_token text, p_players integer, p_worlds integer)
+drop function if exists public.report_server_stats(text, integer, integer);
+create or replace function public.report_server_stats(p_token text, p_players integer, p_worlds integer default null)
 returns jsonb
 language plpgsql
 security definer
@@ -517,7 +522,7 @@ begin
   end if;
 
   if p_players is null or p_players < 0 or p_players > 100000
-     or p_worlds is null or p_worlds < 0 or p_worlds > 1000000 then
+     or (p_worlds is not null and (p_worlds < 0 or p_worlds > 1000000)) then
     raise exception 'GT:BAD_STATS';
   end if;
 
