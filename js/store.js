@@ -202,15 +202,13 @@
     ));
   }
 
-  function renderError(error) {
+  function renderError() {
     grid.setAttribute("aria-busy", "false");
     meta.textContent = "";
-    if (error) console.error("[GTPLAY] Store load failed:", error);
     grid.replaceChildren(
       h("div", { class: "state-block" },
         h("p", { class: "state-title" }, "Couldn't load the store"),
         h("p", { class: "state-text" }, "Please check your connection and try again."),
-        error && error.code === "CONFIG" ? h("p", { class: "help error-detail" }, error.message) : null,
         h("button", { type: "button", class: "btn btn-outline", onclick: load }, "Try again")
       )
     );
