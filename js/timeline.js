@@ -1,3 +1,4 @@
+// GTPLAY v3.1 (redeem code)
 // ==================================================
 // GTPLAY ORDER TIMELINE
 // --------------------------------------------------
@@ -60,5 +61,45 @@ GT.timeline = function (order) {
         )
       )
     )
+  );
+};
+
+// ==================================================
+// REDEEM CODE CARD
+// --------------------------------------------------
+// Item dikirim dalam bentuk redeem code. Admin bisa
+// menulis beberapa code (satu per baris); tiap code
+// punya tombol Copy sendiri. Muncul setelah Completed.
+// ==================================================
+
+GT.redeemBlock = function (order) {
+  const { h, copyButton } = GT.utils;
+  if (!order || !order.redeemCode) return null;
+
+  const codes = String(order.redeemCode).split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (codes.length === 0) return null;
+
+  return h("section", { class: "redeem-card", "aria-labelledby": `redeem-${order.id}` },
+    h("div", { class: "redeem-head" },
+      h("p", { class: "eyebrow" }, "Your item"),
+      h("h3", { id: `redeem-${order.id}` }, codes.length > 1 ? `Redeem Codes (${codes.length})` : "Redeem Code")
+    ),
+    h("ul", { class: "redeem-list" }, codes.map((code, index) =>
+      h("li", { class: "redeem-row" },
+        h("code", { class: "redeem-code" }, code),
+        copyButton(code, codes.length > 1 ? `Redeem code ${index + 1}` : "Redeem code", "btn btn-light btn-sm redeem-copy")
+      )
+    )),
+    codes.length > 1
+      ? h("button", {
+          type: "button",
+          class: "link-button redeem-copy-all",
+          onclick: async () => {
+            const ok = await GT.utils.copyText(codes.join("\n"));
+            GT.utils.toast(ok ? "All redeem codes copied." : "Couldn't copy — select the codes manually.", ok ? "success" : "error");
+          }
+        }, "Copy all codes")
+      : null,
+    h("p", { class: "help redeem-help" }, GT.config.REDEEM_HELP || "")
   );
 };

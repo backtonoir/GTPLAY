@@ -1,3 +1,4 @@
+// GTPLAY v3.1 (redeem code)
 // ==================================================
 // GTPLAY TRACK ORDER PAGE (track.html)
 // --------------------------------------------------
@@ -52,6 +53,7 @@
         infoRow("Order date", formatDateTime(order.createdAt)),
         infoRow("Items", order.items.map(item => `${item.name} ×${item.quantity}`).join(", ")),
         h("div", { class: "summary-row summary-total" }, h("span", {}, "Total Payment"), h("strong", {}, formatRupiah(order.total))),
+        GT.redeemBlock(order),
         order.adminNote && order.status === "rejected"
           ? h("div", { class: "notice notice-danger track-note" }, h("p", {}, `Admin note: ${order.adminNote}`))
           : null,

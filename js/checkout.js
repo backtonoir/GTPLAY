@@ -1,3 +1,4 @@
+// GTPLAY v3.1 (redeem code)
 // ==================================================
 // GTPLAY CHECKOUT PAGE (checkout.html)
 // --------------------------------------------------
@@ -153,7 +154,7 @@
       h("div", { class: "field" },
         h("label", { class: "label", for: "growIdInput" }, "GrowID"),
         growInput,
-        h("p", { class: "help", id: "growIdHelp" }, "Items are sent to this GrowID. Letters, numbers, or underscore."),
+        h("p", { class: "help", id: "growIdHelp" }, "Admin uses this to identify your order. Letters, numbers, or underscore."),
         growError
       ),
       h("label", { class: "checkbox", for: "growIdConfirm" },

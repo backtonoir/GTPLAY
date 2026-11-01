@@ -1,3 +1,4 @@
+// GTPLAY v3.1 (redeem code)
 // ==================================================
 // GTPLAY UTILITIES
 // --------------------------------------------------
@@ -329,6 +330,43 @@ GT.utils = (function () {
     });
   }
 
+  // Salin teks ke clipboard (dengan fallback untuk browser lama).
+  async function copyText(value) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch (error) {
+      const area = h("textarea", { readonly: true, class: "sr-only" });
+      area.value = value;
+      document.body.append(area);
+      area.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      area.remove();
+      return ok;
+    }
+  }
+
+  function copyButton(value, label, className) {
+    return h("button", {
+      type: "button",
+      class: className || "copy-button",
+      "aria-label": `Copy ${label}`,
+      onclick: async event => {
+        const button = event.currentTarget;
+        const ok = await copyText(value);
+        if (ok) {
+          toast(`${label} copied.`, "success");
+          const original = button.textContent;
+          button.textContent = "Copied ✓";
+          setTimeout(() => { button.textContent = original; }, 1500);
+        } else {
+          toast(`Couldn't copy — select the ${label.toLowerCase()} manually.`, "error");
+        }
+      }
+    }, "Copy");
+  }
+
   function debounce(fn, wait) {
     let timer;
     return function (...args) {
@@ -369,6 +407,8 @@ GT.utils = (function () {
     lockScroll,
     unlockScroll,
     confirmDialog,
+    copyText,
+    copyButton,
     debounce,
     getParam,
     getHashParam

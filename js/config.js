@@ -1,3 +1,4 @@
+// GTPLAY v3.1 (redeem code)
 // ==================================================
 // GTPLAY CONFIGURATION
 // --------------------------------------------------
@@ -29,6 +30,11 @@ GT.config = Object.freeze({
     youtube: ""
   },
 
+  // Petunjuk singkat cara memakai redeem code, tampil di bawah code
+  // pada halaman pembayaran & Track Order. Sesuaikan dengan cara
+  // redeem di server GTPLAY.
+  REDEEM_HELP: "Salin code di atas lalu redeem di game GTPLAY. Hubungi admin jika code tidak bisa dipakai.",
+
   // Batas ukuran bukti pembayaran (MB).
   MAX_PROOF_MB: 5,
 
@@ -45,7 +51,7 @@ GT.config = Object.freeze({
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55enB5aWJteXRkamtleGlxc2t1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NDExNDIsImV4cCI6MjEwOTExNzE0Mn0.KXCxaZelsJl_H-WkNV6ghXXuGWGNlBZt9axsfGFGsZY",
 
   // Versi library Supabase yang dimuat dari CDN (hanya mode produksi).
-  SUPABASE_JS_URL: "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"
+  SUPABASE_JS_URL: "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"
 });
 
 GT.isBackendConfigured = function () {

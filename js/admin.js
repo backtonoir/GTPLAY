@@ -1,3 +1,4 @@
+// GTPLAY v3.1 (redeem code)
 // ==================================================
 // GTPLAY ADMIN DASHBOARD (admin.html)
 // --------------------------------------------------
@@ -80,10 +81,10 @@
     return close;
   }
 
-  function promptDialog({ title, label, value, required, confirmLabel }) {
+  function promptDialog({ title, label, value, required, confirmLabel, mono }) {
     return new Promise(resolve => {
       let done = false;
-      const input = h("textarea", { class: "input", id: "promptInput", rows: "3" });
+      const input = h("textarea", { class: mono ? "input mono" : "input", id: "promptInput", rows: "3", spellcheck: mono ? "false" : null });
       input.value = value || "";
       const error = h("p", { class: "error-text", role: "alert" });
 
@@ -430,6 +431,7 @@
       ),
       h("div", { class: "summary-row summary-total" }, h("span", {}, "Total"), h("strong", {}, formatRupiah(order.total))),
       proofBlock(order),
+      redeemEditor(order, () => close()),
       order.adminNote ? h("div", { class: "notice" }, h("p", {}, h("strong", {}, "Admin note: "), order.adminNote)) : null,
       h("div", {}, h("h3", { class: "card-title timeline-title-head" }, "Timeline"), GT.timeline ? GT.timeline(order) : eventsList(order)),
       allowed.length ? h("h3", { class: "card-title timeline-title-head" }, "Update status") : null,
@@ -445,8 +447,19 @@
         class: `btn ${meta.style}`,
         onclick: async () => {
           let note = null;
+          let redeemCode = null;
 
-          if (meta.needsNote) {
+          if (next === "completed") {
+            redeemCode = await promptDialog({
+              title: "Complete order",
+              label: "Redeem code (one per line if more than one) — shown to the customer",
+              value: order.redeemCode || "",
+              required: true,
+              confirmLabel: "Save & complete",
+              mono: true
+            });
+            if (redeemCode === null) return;
+          } else if (meta.needsNote) {
             note = await promptDialog({ title: "Reject payment", label: "Reason (shown to the customer)", required: true, confirmLabel: "Reject payment" });
             if (note === null) return;
           } else if (next === "cancelled") {
@@ -458,7 +471,7 @@
           }
 
           try {
-            await admin.updateStatus(order.id, next, note);
+            await admin.updateStatus(order.id, next, note, redeemCode);
             toast(`Order marked as ${STATUS[next].label}.`, "success");
             close();
             await reload();
@@ -468,6 +481,48 @@
         }
       }, meta.label));
     });
+  }
+
+  // Redeem code bisa diisi lebih awal (Verified/Processing) dan
+  // diperbaiki setelah Completed bila salah ketik.
+  function redeemEditor(order, closeModal) {
+    if (!["payment_verified", "processing", "completed"].includes(order.status)) return null;
+
+    const area = h("textarea", {
+      class: "input mono",
+      id: "redeemInput",
+      rows: "3",
+      maxlength: "2000",
+      placeholder: "One redeem code per line",
+      spellcheck: "false"
+    });
+    area.value = order.redeemCode || "";
+
+    const save = h("button", {
+      type: "button",
+      class: "btn btn-outline btn-sm",
+      onclick: async () => {
+        save.disabled = true;
+        try {
+          await admin.setRedeemCode(order.id, area.value);
+          toast("Redeem code saved.", "success");
+          closeModal();
+          await reload();
+        } catch (error) {
+          toast(error.message, "error");
+          save.disabled = false;
+        }
+      }
+    }, "Save redeem code");
+
+    return h("div", { class: "field redeem-editor" },
+      h("label", { class: "label", for: "redeemInput" }, "Redeem code"),
+      area,
+      h("p", { class: "help" }, order.status === "completed"
+        ? "Visible to the customer now. Edit only to fix a mistake."
+        : "The customer sees this once you mark the order as Completed."),
+      h("div", {}, save)
+    );
   }
 
   function row(label, value) {

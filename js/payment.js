@@ -1,3 +1,4 @@
+// GTPLAY v3.1 (redeem code)
 // ==================================================
 // GTPLAY PAYMENT PAGE (payment.html?order=ID#k=CODE)
 // --------------------------------------------------
@@ -35,21 +36,7 @@
   // SMALL PARTS
   // ------------------------------------------------
 
-  function copyButton(value, label) {
-    return h("button", {
-      type: "button",
-      class: "copy-button",
-      "aria-label": `Copy ${label}`,
-      onclick: async () => {
-        try {
-          await navigator.clipboard.writeText(value);
-          toast(`${label} copied.`, "success");
-        } catch (error) {
-          toast(`Couldn't copy — select the ${label.toLowerCase()} manually.`, "error");
-        }
-      }
-    }, "Copy");
-  }
+  const copyButton = (value, label) => GT.utils.copyButton(value, label);
 
   function infoRow(label, valueNode) {
     return h("div", { class: "summary-row" }, h("span", {}, label), h("span", { class: "value" }, valueNode));
@@ -348,12 +335,14 @@
     } else if (s === "payment_verified" || s === "processing") {
       panel.append(
         h("h2", { class: "card-title" }, s === "processing" ? "Your order is being processed" : "Payment verified"),
-        h("div", { class: "notice notice-ok" }, h("p", {}, "Your payment has been verified. The admin will send the items to your GrowID."))
+        h("div", { class: "notice notice-ok" }, h("p", {}, "Your payment has been verified. The admin is preparing your redeem code — it will appear on this page when your order is completed."))
       );
     } else if (s === "completed") {
+      const redeem = GT.redeemBlock(order);
       panel.append(
         h("h2", { class: "card-title" }, "Order completed"),
-        h("div", { class: "notice notice-ok" }, h("p", {}, `Your items were sent to ${order.growId}. Thanks for shopping at GTPLAY!`)),
+        redeem || h("div", { class: "notice notice-ok" }, h("p", {}, "Your order is complete. Contact admin if you haven't received your redeem code.")),
+        h("p", { class: "help" }, "Thanks for shopping at GTPLAY! Your redeem code stays available on Track Order."),
         h("a", { class: "btn btn-outline", href: "index.html#store" }, "Back to store")
       );
     } else if (s === "expired") {
