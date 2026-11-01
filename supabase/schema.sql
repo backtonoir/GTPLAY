@@ -66,9 +66,14 @@ create table if not exists public.orders (
   proof_path         text,
   proof_submitted_at timestamptz,
   admin_note         text check (admin_note is null or length(admin_note) <= 500),
+  redeem_code        text check (redeem_code is null or length(redeem_code) <= 2000),
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
+
+-- Upgrade untuk database yang dibuat sebelum fitur redeem code.
+alter table public.orders add column if not exists redeem_code text
+  check (redeem_code is null or length(redeem_code) <= 2000);
 
 create index if not exists orders_status_created_idx on public.orders (status, created_at desc);
 create index if not exists orders_created_idx on public.orders (created_at desc);
@@ -229,6 +234,8 @@ as $$
     'proofSubmittedAt', o.proof_submitted_at,
     'adminNote', case when p_include_private or o.status = 'rejected' then coalesce(o.admin_note, '') else '' end,
     'proofPath', case when p_include_private then o.proof_path else null end,
+    -- Pembeli baru bisa melihat redeem code setelah pesanan Completed.
+    'redeemCode', case when p_include_private or o.status = 'completed' then o.redeem_code else null end,
     'serverNow', now(),
     'items', coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -601,7 +608,15 @@ begin
 end $$;
 
 -- Transisi yang diizinkan (sama dengan ADMIN_TRANSITIONS di js/api.js).
-create or replace function public.admin_update_order_status(p_order_id text, p_status text, p_note text default null)
+-- Versi lama (3 parameter) dihapus agar tidak ada dua versi fungsi.
+drop function if exists public.admin_update_order_status(text, text, text);
+
+create or replace function public.admin_update_order_status(
+  p_order_id text,
+  p_status text,
+  p_note text default null,
+  p_redeem_code text default null
+)
 returns jsonb
 language plpgsql
 security definer
@@ -611,6 +626,7 @@ declare
   v_order public.orders;
   v_next public.order_status;
   v_note text := nullif(btrim(coalesce(p_note, '')), '');
+  v_redeem text := nullif(btrim(coalesce(p_redeem_code, '')), '');
   v_released public.order_status[] := array['expired', 'cancelled', 'rejected']::public.order_status[];
   v_allowed boolean;
 begin
@@ -645,6 +661,11 @@ begin
     raise exception 'GT:INVALID_TRANSITION' using detail = 'A reason is required to reject a payment.';
   end if;
 
+  -- Pesanan dikirim dalam bentuk redeem code → wajib ada saat Completed.
+  if v_next = 'completed' and coalesce(v_redeem, v_order.redeem_code) is null then
+    raise exception 'GT:REDEEM_REQUIRED';
+  end if;
+
   -- Stok: lepas saat masuk status "released", reservasi ulang saat keluar darinya.
   if v_order.status = any (v_released) and not (v_next = any (v_released)) then
     perform public.gt_adjust_stock(v_order.id, -1);
@@ -655,11 +676,44 @@ begin
   update public.orders
     set status = v_next,
         admin_note = coalesce(v_note, admin_note),
+        redeem_code = coalesce(v_redeem, redeem_code),
         updated_at = now()
     where id = v_order.id;
 
   insert into public.order_events (order_id, status, note, actor)
   values (v_order.id, v_next, v_note, 'admin');
+
+  return public.gt_order_json(v_order.id, true);
+end $$;
+
+-- Simpan / perbaiki redeem code tanpa mengubah status
+-- (mis. salah ketik setelah Completed).
+create or replace function public.admin_set_redeem_code(p_order_id text, p_redeem_code text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_order public.orders;
+  v_redeem text := nullif(btrim(coalesce(p_redeem_code, '')), '');
+begin
+  perform public.gt_require_admin();
+
+  select * into v_order from public.orders where id = p_order_id for update;
+  if not found then
+    raise exception 'GT:ORDER_NOT_FOUND';
+  end if;
+
+  if v_order.status not in ('payment_verified', 'processing', 'completed') then
+    raise exception 'GT:INVALID_STATUS';
+  end if;
+
+  if v_redeem is null and v_order.status = 'completed' then
+    raise exception 'GT:REDEEM_REQUIRED';
+  end if;
+
+  update public.orders set redeem_code = v_redeem, updated_at = now() where id = v_order.id;
 
   return public.gt_order_json(v_order.id, true);
 end $$;
@@ -684,7 +738,8 @@ revoke all on function public.can_upload_proof(text)                  from publi
 revoke all on function public.is_admin()                              from public;
 revoke all on function public.admin_list_orders(integer)              from public, anon;
 revoke all on function public.admin_get_order(text)                   from public, anon;
-revoke all on function public.admin_update_order_status(text, text, text) from public, anon;
+revoke all on function public.admin_update_order_status(text, text, text, text) from public, anon;
+revoke all on function public.admin_set_redeem_code(text, text)       from public, anon;
 
 grant execute on function public.create_order(text, jsonb)            to anon, authenticated;
 grant execute on function public.get_order(text, text)                to anon, authenticated;
@@ -694,7 +749,8 @@ grant execute on function public.can_upload_proof(text)               to anon, a
 grant execute on function public.is_admin()                           to anon, authenticated;
 grant execute on function public.admin_list_orders(integer)           to authenticated;
 grant execute on function public.admin_get_order(text)                to authenticated;
-grant execute on function public.admin_update_order_status(text, text, text) to authenticated;
+grant execute on function public.admin_update_order_status(text, text, text, text) to authenticated;
+grant execute on function public.admin_set_redeem_code(text, text)    to authenticated;
 
 -- --------------------------------------------------
 -- STORAGE
