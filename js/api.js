@@ -52,6 +52,7 @@ GT.api = (function () {
     NOT_SIGNED_IN: "Please sign in.",
     INVALID_TRANSITION: "That status change is not allowed.",
     INVALID_PRODUCT: "Product data is not valid.",
+    REDEEM_REQUIRED: "Enter the redeem code before marking this order as completed.",
     NETWORK: "Could not reach the server. Check your connection and try again."
   };
 
@@ -198,9 +199,12 @@ GT.api = (function () {
       return orders;
     }
 
-    function publicOrder(order) {
+    // Pembeli baru melihat redeem code setelah Completed (sama dengan SQL).
+    function publicOrder(order, includePrivate) {
       const copy = JSON.parse(JSON.stringify(order));
       delete copy.accessCode;
+      if (!copy.redeemCode) copy.redeemCode = null;
+      if (!includePrivate && copy.status !== "completed") copy.redeemCode = null;
       return copy;
     }
 
@@ -329,17 +333,17 @@ GT.api = (function () {
 
         async listOrders() {
           return Object.values(sweepExpired())
-            .map(publicOrder)
+            .map(order => publicOrder(order, true))
             .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         },
 
         async getOrder(orderId) {
           const order = sweepExpired()[orderId];
           if (!order) fail("ORDER_NOT_FOUND");
-          return { ...publicOrder(order), proofUrl: null };
+          return { ...publicOrder(order, true), proofUrl: null };
         },
 
-        async updateStatus(orderId, nextStatus, note) {
+        async updateStatus(orderId, nextStatus, note, redeemCode) {
           const orders = sweepExpired();
           const order = orders[orderId];
           if (!order) fail("ORDER_NOT_FOUND");
@@ -362,12 +366,31 @@ GT.api = (function () {
             adjustStock(products, order.items, +1);
           }
 
+          const redeem = String(redeemCode || "").trim();
+          if (nextStatus === "completed" && !redeem && !order.redeemCode) fail("REDEEM_REQUIRED");
+
           if (note) order.adminNote = note;
+          if (redeem) order.redeemCode = redeem;
           pushEvent(order, nextStatus, note, "admin");
           saveProducts(products);
           saveOrders(orders);
 
-          return publicOrder(order);
+          return publicOrder(order, true);
+        },
+
+        async setRedeemCode(orderId, redeemCode) {
+          const orders = sweepExpired();
+          const order = orders[orderId];
+          if (!order) fail("ORDER_NOT_FOUND");
+          if (!["payment_verified", "processing", "completed"].includes(order.status)) fail("INVALID_STATUS");
+
+          const redeem = String(redeemCode || "").trim();
+          if (!redeem && order.status === "completed") fail("REDEEM_REQUIRED");
+
+          order.redeemCode = redeem || null;
+          order.updatedAt = new Date().toISOString();
+          saveOrders(orders);
+          return publicOrder(order, true);
         },
 
         async listProducts() {
@@ -444,13 +467,40 @@ GT.api = (function () {
       });
     }
 
+    // Kesalahan konfigurasi yang paling sering terjadi, dicek sebelum
+    // menghubungi Supabase agar pesannya jelas.
+    function checkConfig() {
+      const url = GT.config.SUPABASE_URL.trim();
+      const key = GT.config.SUPABASE_ANON_KEY.trim();
+
+      if (!/^https:\/\/[^/]+\/?$/.test(url) || /supabase\.com/.test(url)) {
+        return Promise.reject(new ApiError("CONFIG",
+          "SUPABASE_URL di js/config.js salah. Gunakan Project URL, contoh: https://abcdxyz.supabase.co (bukan link dashboard)."));
+      }
+      if (/^sb_secret_/.test(key) || /service_role/.test(decodeJwtRole(key))) {
+        return Promise.reject(new ApiError("CONFIG",
+          "Key di js/config.js adalah SECRET/service_role key. Ganti dengan anon / publishable key — dan segera rotate secret key itu di Supabase."));
+      }
+      return Promise.resolve();
+    }
+
+    function decodeJwtRole(key) {
+      try {
+        return JSON.parse(atob(key.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).role || "";
+      } catch (error) {
+        return "";
+      }
+    }
+
     function client() {
       if (!clientPromise) {
-        clientPromise = loadLibrary().then(() =>
-          window.supabase.createClient(GT.config.SUPABASE_URL, GT.config.SUPABASE_ANON_KEY, {
+        clientPromise = checkConfig().then(loadLibrary).then(() =>
+          window.supabase.createClient(GT.config.SUPABASE_URL.trim().replace(/\/+$/, ""), GT.config.SUPABASE_ANON_KEY.trim(), {
             auth: { persistSession: true, autoRefreshToken: true }
           })
         );
+        // Jangan simpan kegagalan konfigurasi selamanya.
+        clientPromise.catch(() => { clientPromise = null; });
       }
       return clientPromise;
     }
@@ -462,7 +512,18 @@ GT.api = (function () {
       const match = text.match(/GT:([A-Z_]+)/);
 
       if (match) return new ApiError(match[1], MESSAGES[match[1]] || text);
-      if (/fetch|network/i.test(text)) return new ApiError("NETWORK", MESSAGES.NETWORK);
+      if (/invalid api key|no api key|apikey/i.test(text)) {
+        return new ApiError("CONFIG", "Supabase menolak API key. Cek SUPABASE_ANON_KEY di js/config.js (pakai anon / publishable key dari project yang sama dengan URL-nya).");
+      }
+      if (/secret api key/i.test(text)) {
+        return new ApiError("CONFIG", "Secret key tidak boleh dipakai di browser. Ganti SUPABASE_ANON_KEY dengan anon / publishable key.");
+      }
+      if (/does not exist|could not find the (table|function)|schema cache/i.test(text)) {
+        return new ApiError("CONFIG", "Database belum disiapkan: jalankan supabase/schema.sql lalu seed.sql di SQL Editor Supabase. (" + text + ")");
+      }
+      if (/failed to fetch|network|load failed/i.test(text)) {
+        return new ApiError("NETWORK", "Tidak bisa menghubungi Supabase. Cek SUPABASE_URL di js/config.js dan pastikan project Supabase aktif (tidak paused).");
+      }
       if (/JWT|not authenticated|permission denied/i.test(text)) return new ApiError("NOT_SIGNED_IN", MESSAGES.NOT_SIGNED_IN);
       return new ApiError("UNKNOWN", text || "Something went wrong.");
     }
@@ -589,7 +650,14 @@ GT.api = (function () {
           try {
             const sb = await client();
             const { error } = await sb.auth.signInWithPassword({ email, password });
-            if (error) throw new ApiError("AUTH", "Email or password is incorrect.");
+            if (error) {
+              const text = String(error.message || "");
+              if (/invalid login credentials/i.test(text)) throw new ApiError("AUTH", "Email or password is incorrect.");
+              if (/email not confirmed/i.test(text)) {
+                throw new ApiError("AUTH", "Email belum dikonfirmasi. Di Supabase: Authentication → Users → klik user → Confirm email (atau buat ulang dengan Auto Confirm).");
+              }
+              throw error;
+            }
           } catch (error) {
             throw mapError(error);
           }
@@ -618,11 +686,19 @@ GT.api = (function () {
           return { ...order, proofUrl };
         },
 
-        async updateStatus(orderId, nextStatus, note) {
+        async updateStatus(orderId, nextStatus, note, redeemCode) {
           return rpc("admin_update_order_status", {
             p_order_id: orderId,
             p_status: nextStatus,
-            p_note: note || null
+            p_note: note || null,
+            p_redeem_code: redeemCode || null
+          });
+        },
+
+        async setRedeemCode(orderId, redeemCode) {
+          return rpc("admin_set_redeem_code", {
+            p_order_id: orderId,
+            p_redeem_code: redeemCode || null
           });
         },
 
