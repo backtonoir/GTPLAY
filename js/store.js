@@ -1,4 +1,4 @@
-// GTPLAY v3.2 (maintenance toggle)
+// GTPLAY v3.3 (landing page)
 // ==================================================
 // GTPLAY STORE PAGE (index.html)
 // --------------------------------------------------

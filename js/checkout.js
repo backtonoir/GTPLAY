@@ -1,4 +1,4 @@
-// GTPLAY v3.2 (maintenance toggle)
+// GTPLAY v3.3 (landing page)
 // ==================================================
 // GTPLAY CHECKOUT PAGE (checkout.html)
 // --------------------------------------------------
@@ -47,7 +47,7 @@
     return h("div", { class: "card" },
       h("div", { class: "order-head" },
         h("h2", { class: "card-title" }, "Order summary"),
-        h("a", { class: "link-button", href: "index.html#store" }, "+ Add more items")
+        h("a", { class: "link-button", href: "store.html#store" }, "+ Add more items")
       ),
       h("table", { class: "line-table" },
         h("thead", {},
@@ -218,7 +218,7 @@
         h("div", { class: "state-block" },
           h("p", { class: "state-title" }, "Your cart is empty"),
           h("p", { class: "state-text" }, "Add items from the store before checking out."),
-          h("a", { class: "btn btn-primary", href: "index.html#store" }, "Go to store")
+          h("a", { class: "btn btn-primary", href: "store.html#store" }, "Go to store")
         )
       );
       return;

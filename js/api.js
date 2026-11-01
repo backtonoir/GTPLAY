@@ -1,4 +1,4 @@
-// GTPLAY v3.2 (maintenance toggle)
+// GTPLAY v3.3 (landing page)
 // ==================================================
 // GTPLAY DATA LAYER
 // --------------------------------------------------
@@ -54,6 +54,9 @@ GT.api = (function () {
     INVALID_TRANSITION: "That status change is not allowed.",
     INVALID_PRODUCT: "Product data is not valid.",
     MAINTENANCE: "The store is under maintenance. New orders are paused for now.",
+    INVALID_LINK: "Download links must start with https://",
+    INVALID_ANNOUNCEMENT: "Announcement needs a title, content, and date.",
+    INVALID_PRICE: "Price must be a whole number above 0 with a valid date.",
     REDEEM_REQUIRED: "Enter the redeem code before marking this order as completed.",
     NETWORK: "Could not reach the server. Check your connection and try again."
   };
@@ -82,6 +85,66 @@ GT.api = (function () {
     cancelled: [],
     rejected: []
   };
+
+  function validateAnnouncement(item) {
+    if (!String(item.title || "").trim() || !String(item.content || "").trim()) fail("INVALID_ANNOUNCEMENT");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(item.publishedOn || ""))) fail("INVALID_ANNOUNCEMENT");
+    if (!["event", "update", "maintenance"].includes(item.category)) fail("INVALID_ANNOUNCEMENT");
+  }
+
+  function validateLockPrice(entry) {
+    const price = Number(entry.price);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(entry.recordedOn || ""))) fail("INVALID_PRICE");
+    if (!Number.isInteger(price) || price <= 0) fail("INVALID_PRICE");
+  }
+
+  function validateDownloads(links) {
+    Object.values(links).forEach(url => {
+      const value = String(url || "").trim();
+      if (value && !/^https:\/\//.test(value)) fail("INVALID_LINK");
+    });
+  }
+
+  function todayISO() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  }
+
+  // ------------------------------------------------
+  // SERVER STATUS (GTPS Cloud)
+  // --------------------------------------------------
+  // Website membaca JSON ternormalisasi dari SERVER_STATUS_URL:
+  //   { "online": true, "players": 123, "worlds": 45, "updatedAt": "…" }
+  // URL ini nanti adalah perantara (Supabase Edge Function) yang
+  // menyimpan API key GTPS Cloud — key tidak pernah ada di browser.
+  // ------------------------------------------------
+
+  async function getServerStatus() {
+    const url = GT.config.SERVER_STATUS_URL;
+    if (!url) return { configured: false };
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const response = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const toNumber = value => (Number.isFinite(Number(value)) ? Number(value) : null);
+
+      return {
+        configured: true,
+        online: Boolean(data.online),
+        players: toNumber(data.players),
+        worlds: toNumber(data.worlds),
+        updatedAt: data.updatedAt || new Date().toISOString()
+      };
+    } catch (error) {
+      return { configured: true, error: true };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
   function validateProof(file) {
     if (!file) fail("PROOF_REQUIRED");
@@ -147,10 +210,32 @@ GT.api = (function () {
   const demo = (function () {
     const PRODUCTS_KEY = "gtplay:demo:products";
     const SETTINGS_KEY = "gtplay:demo:settings";
+    const ANNOUNCEMENTS_KEY = "gtplay:demo:announcements";
+    const PRICES_KEY = "gtplay:demo:lock-prices";
 
     function loadSettings() {
       const saved = storage.get(SETTINGS_KEY, null);
-      return { maintenance: false, message: "", eta: "", ...(saved || {}) };
+      return {
+        maintenance: false,
+        message: "",
+        eta: "",
+        ...(saved || {}),
+        downloads: { windows: "", android: "", ios: "", mac: "", ...((saved && saved.downloads) || {}) }
+      };
+    }
+
+    function loadAnnouncements() {
+      const saved = storage.get(ANNOUNCEMENTS_KEY, null);
+      return Array.isArray(saved) ? saved : (GT.seedAnnouncements || []).map(item => ({ ...item }));
+    }
+
+    function sortAnnouncements(list) {
+      return list.slice().sort((a, b) => b.publishedOn.localeCompare(a.publishedOn) || String(b.createdAt).localeCompare(String(a.createdAt)));
+    }
+
+    function loadPrices() {
+      const saved = storage.get(PRICES_KEY, []);
+      return (Array.isArray(saved) ? saved : []).slice().sort((a, b) => a.recordedOn.localeCompare(b.recordedOn));
     }
     const ORDERS_KEY = "gtplay:demo:orders";
 
@@ -232,6 +317,17 @@ GT.api = (function () {
 
       async getStoreStatus() {
         return loadSettings();
+      },
+
+      getServerStatus,
+
+      async listAnnouncements(limit) {
+        const list = sortAnnouncements(loadAnnouncements().filter(item => item.published));
+        return limit ? list.slice(0, limit) : list;
+      },
+
+      async listLockPrices() {
+        return loadPrices();
       },
 
       async listProducts() {
@@ -463,9 +559,63 @@ GT.api = (function () {
           return settings;
         },
 
+        async setDownloads(links) {
+          validateDownloads(links);
+          const settings = loadSettings();
+          settings.downloads = {
+            windows: String(links.windows || "").trim(),
+            android: String(links.android || "").trim(),
+            ios: String(links.ios || "").trim(),
+            mac: String(links.mac || "").trim()
+          };
+          storage.set(SETTINGS_KEY, settings);
+          return settings;
+        },
+
+        async listAnnouncements() {
+          return sortAnnouncements(loadAnnouncements());
+        },
+
+        async saveAnnouncement(input) {
+          validateAnnouncement(input);
+          const list = loadAnnouncements();
+          const now = new Date().toISOString();
+          const item = {
+            id: input.id || `ann-${randomCode(8, "0123456789abcdef")}`,
+            category: input.category,
+            title: input.title.trim(),
+            content: input.content.trim(),
+            publishedOn: input.publishedOn,
+            published: Boolean(input.published),
+            createdAt: input.createdAt || now
+          };
+          const index = list.findIndex(entry => entry.id === item.id);
+          if (index >= 0) list[index] = item;
+          else list.push(item);
+          storage.set(ANNOUNCEMENTS_KEY, list);
+          return item;
+        },
+
+        async deleteAnnouncement(id) {
+          storage.set(ANNOUNCEMENTS_KEY, loadAnnouncements().filter(item => item.id !== id));
+        },
+
+        async saveLockPrice(entry) {
+          validateLockPrice(entry);
+          const list = loadPrices().filter(item => item.recordedOn !== entry.recordedOn);
+          list.push({ recordedOn: entry.recordedOn, price: Number(entry.price) });
+          storage.set(PRICES_KEY, list);
+        },
+
+        async deleteLockPrice(recordedOn) {
+          storage.set(PRICES_KEY, loadPrices().filter(item => item.recordedOn !== recordedOn));
+        },
+
         async resetDemo() {
           storage.remove(PRODUCTS_KEY);
           storage.remove(ORDERS_KEY);
+          storage.remove(ANNOUNCEMENTS_KEY);
+          storage.remove(PRICES_KEY);
         }
       }
     };
@@ -583,6 +733,46 @@ GT.api = (function () {
       return json;
     }
 
+    function mapAnnouncement(row) {
+      return {
+        id: row.id,
+        category: row.category,
+        title: row.title,
+        content: row.content,
+        publishedOn: row.published_on,
+        published: row.published,
+        createdAt: row.created_at
+      };
+    }
+
+    async function selectAnnouncements(limit, publishedOnly) {
+      try {
+        const sb = await client();
+        let query = sb.from("announcements")
+          .select("id,category,title,content,published_on,published,created_at")
+          .order("published_on", { ascending: false })
+          .order("created_at", { ascending: false });
+        if (publishedOnly) query = query.eq("published", true);
+        if (limit) query = query.limit(limit);
+        const { data, error } = await query;
+        if (error) throw error;
+        return data.map(mapAnnouncement);
+      } catch (error) {
+        throw mapError(error);
+      }
+    }
+
+    async function tableWrite(run) {
+      try {
+        const sb = await client();
+        const { data, error } = await run(sb);
+        if (error) throw error;
+        return data;
+      } catch (error) {
+        throw mapError(error);
+      }
+    }
+
     function fileExtension(file) {
       return { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" }[file.type] || "bin";
     }
@@ -592,6 +782,23 @@ GT.api = (function () {
 
       async getStoreStatus() {
         return rpc("get_store_status");
+      },
+
+      getServerStatus,
+
+      async listAnnouncements(limit) {
+        return selectAnnouncements(limit, true);
+      },
+
+      async listLockPrices() {
+        try {
+          const sb = await client();
+          const { data, error } = await sb.from("lock_prices").select("recorded_on,price").order("recorded_on", { ascending: true });
+          if (error) throw error;
+          return data.map(row => ({ recordedOn: row.recorded_on, price: row.price }));
+        } catch (error) {
+          throw mapError(error);
+        }
       },
 
       async listProducts() {
@@ -731,6 +938,47 @@ GT.api = (function () {
           });
         },
 
+        async setDownloads(links) {
+          validateDownloads(links);
+          return rpc("admin_set_downloads", {
+            p_windows: links.windows || null,
+            p_android: links.android || null,
+            p_ios: links.ios || null,
+            p_mac: links.mac || null
+          });
+        },
+
+        async listAnnouncements() {
+          return selectAnnouncements(null, false);
+        },
+
+        async saveAnnouncement(input) {
+          validateAnnouncement(input);
+          const row = {
+            category: input.category,
+            title: input.title.trim(),
+            content: input.content.trim(),
+            published_on: input.publishedOn,
+            published: Boolean(input.published)
+          };
+          if (input.id) row.id = input.id;
+          const data = await tableWrite(sb => sb.from("announcements").upsert(row).select().single());
+          return mapAnnouncement(data);
+        },
+
+        async deleteAnnouncement(id) {
+          await tableWrite(sb => sb.from("announcements").delete().eq("id", id));
+        },
+
+        async saveLockPrice(entry) {
+          validateLockPrice(entry);
+          await tableWrite(sb => sb.from("lock_prices").upsert({ recorded_on: entry.recordedOn, price: Number(entry.price) }));
+        },
+
+        async deleteLockPrice(recordedOn) {
+          await tableWrite(sb => sb.from("lock_prices").delete().eq("recorded_on", recordedOn));
+        },
+
         async setRedeemCode(orderId, redeemCode) {
           return rpc("admin_set_redeem_code", {
             p_order_id: orderId,
@@ -824,6 +1072,7 @@ GT.api = (function () {
     ApiError,
     myOrders,
     ADMIN_TRANSITIONS,
+    todayISO,
     isDemo: adapter.mode === "demo"
   };
 })();

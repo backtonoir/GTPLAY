@@ -1,4 +1,4 @@
-// GTPLAY v3.2 (maintenance toggle)
+// GTPLAY v3.3 (landing page)
 // ==================================================
 // GTPLAY PAYMENT PAGE (payment.html?order=ID#k=CODE)
 // --------------------------------------------------
@@ -343,7 +343,7 @@
         h("h2", { class: "card-title" }, "Order completed"),
         redeem || h("div", { class: "notice notice-ok" }, h("p", {}, "Your order is complete. Contact admin if you haven't received your redeem code.")),
         h("p", { class: "help" }, "Thanks for shopping at GTPLAY! Your redeem code stays available on Track Order."),
-        h("a", { class: "btn btn-outline", href: "index.html#store" }, "Back to store")
+        h("a", { class: "btn btn-outline", href: "store.html#store" }, "Back to store")
       );
     } else if (s === "expired") {
       panel.append(

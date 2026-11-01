@@ -1,4 +1,4 @@
-// GTPLAY v3.2 (maintenance toggle)
+// GTPLAY v3.3 (landing page)
 // ==================================================
 // GTPLAY ADMIN DASHBOARD (admin.html)
 // --------------------------------------------------
@@ -229,7 +229,7 @@
     }
 
     const fromHash = window.location.hash.replace("#", "");
-    if (["overview", "orders", "products"].includes(fromHash)) state.tab = fromHash;
+    if (["overview", "orders", "products", "announcements", "prices", "downloads"].includes(fromHash)) state.tab = fromHash;
     renderDashboard();
   }
 
@@ -246,7 +246,10 @@
     const tabs = [
       ["overview", "Overview"],
       ["orders", `Orders (${state.orders.length})`],
-      ["products", `Products (${state.products.length})`]
+      ["products", `Products (${state.products.length})`],
+      ["announcements", "Announcements"],
+      ["prices", "BGL Price"],
+      ["downloads", "Downloads"]
     ];
 
     const panel = h("div", { id: "tabPanel", role: "tabpanel" });
@@ -274,6 +277,9 @@
 
     if (state.tab === "orders") renderOrders(panel);
     else if (state.tab === "products") renderProducts(panel);
+    else if (state.tab === "announcements") renderAnnouncements(panel);
+    else if (state.tab === "prices") renderPrices(panel);
+    else if (state.tab === "downloads") renderDownloads(panel);
     else renderOverview(panel);
   }
 
@@ -866,6 +872,320 @@
   }
 
   // ------------------------------------------------
+  // ANNOUNCEMENTS
+  // ------------------------------------------------
+
+  function formatDay(iso) {
+    return iso ? new Date(`${iso}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-";
+  }
+
+  function loadingPanel(panel) {
+    panel.replaceChildren(h("div", { class: "state-block borderless" }, h("span", { class: "spinner", "aria-hidden": "true" }), "Loading…"));
+  }
+
+  async function renderAnnouncements(panel) {
+    loadingPanel(panel);
+    let items;
+    try {
+      items = await admin.listAnnouncements();
+    } catch (error) {
+      panel.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {}, `${error.message} If you just updated the website, run the latest supabase/schema.sql.`)));
+      return;
+    }
+
+    panel.replaceChildren(
+      h("div", { class: "admin-top admin-toolbar" },
+        h("p", { class: "muted" }, `${items.length} announcement${items.length === 1 ? "" : "s"} · shown on the landing page and Announcement page`),
+        h("button", { type: "button", class: "btn btn-primary btn-sm", onclick: () => openAnnouncementForm(null) }, "+ New announcement")
+      ),
+      items.length === 0
+        ? h("div", { class: "state-block" }, h("p", { class: "state-title" }, "No announcements yet"))
+        : h("div", { class: "data-table-wrap" },
+            h("table", { class: "data-table" },
+              h("thead", {}, h("tr", {},
+                h("th", { scope: "col" }, "Date"),
+                h("th", { scope: "col" }, "Category"),
+                h("th", { scope: "col" }, "Title"),
+                h("th", { scope: "col" }, "Status"),
+                h("th", { scope: "col", class: "num" }, "Actions")
+              )),
+              h("tbody", {}, items.map(item => h("tr", {},
+                h("td", {}, formatDay(item.publishedOn)),
+                h("td", {}, h("span", { class: `announcement-badge ${item.category}` }, item.category)),
+                h("td", {}, h("strong", {}, item.title), h("div", { class: "help clamp-1" }, item.content)),
+                h("td", {}, item.published
+                  ? h("span", { class: "status-badge tone-ok" }, "Published")
+                  : h("span", { class: "status-badge tone-muted" }, "Draft")),
+                h("td", {}, h("div", { class: "row-actions" },
+                  h("button", { type: "button", class: "btn btn-outline btn-sm", onclick: () => openAnnouncementForm(item) }, "Edit"),
+                  h("button", {
+                    type: "button",
+                    class: "btn btn-danger btn-sm",
+                    onclick: async () => {
+                      const ok = await confirmDialog({ title: "Delete announcement?", message: `"${item.title}" will be removed from the website.`, confirmLabel: "Delete", danger: true });
+                      if (!ok) return;
+                      try {
+                        await admin.deleteAnnouncement(item.id);
+                        toast("Announcement deleted.", "success");
+                        renderDashboard();
+                      } catch (error) {
+                        toast(error.message, "error");
+                      }
+                    }
+                  }, "Delete")
+                ))
+              )))
+            )
+          )
+    );
+  }
+
+  function openAnnouncementForm(item) {
+    const a = item || { category: "update", title: "", content: "", publishedOn: GT.api.todayISO(), published: true };
+    const error = h("p", { class: "error-text", role: "alert" });
+
+    const category = h("select", { class: "select", id: "aCategory" },
+      [["update", "Update"], ["event", "Event"], ["maintenance", "Maintenance"]].map(([value, label]) =>
+        h("option", { value, selected: a.category === value }, label)));
+    const date = h("input", { class: "input", id: "aDate", type: "date", value: a.publishedOn, required: true });
+    const title = h("input", { class: "input", id: "aTitle", value: a.title, maxlength: "120", required: true });
+    const content = h("textarea", { class: "input", id: "aContent", rows: "5", maxlength: "2000", required: true });
+    content.value = a.content;
+    const published = h("input", { type: "checkbox", id: "aPublished", checked: a.published });
+    const submit = h("button", { type: "submit", class: "btn btn-primary" }, item ? "Save changes" : "Publish");
+
+    const form = h("form", {
+      novalidate: true,
+      onsubmit: async event => {
+        event.preventDefault();
+        error.textContent = "";
+        if (!title.value.trim() || !content.value.trim() || !date.value) {
+          error.textContent = "Title, content, and date are required.";
+          return;
+        }
+        submit.disabled = true;
+        try {
+          await admin.saveAnnouncement({
+            id: item ? item.id : undefined,
+            createdAt: item ? item.createdAt : undefined,
+            category: category.value,
+            title: title.value,
+            content: content.value,
+            publishedOn: date.value,
+            published: published.checked
+          });
+          toast(item ? "Announcement updated." : "Announcement published.", "success");
+          close();
+          renderDashboard();
+        } catch (err) {
+          error.textContent = err.message;
+          submit.disabled = false;
+        }
+      }
+    },
+      h("div", { class: "form-grid" },
+        h("div", { class: "field" }, h("label", { class: "label", for: "aCategory" }, "Category"), h("div", { class: "select-field" }, category)),
+        h("div", { class: "field" }, h("label", { class: "label", for: "aDate" }, "Date"), date),
+        h("div", { class: "field span-2" }, h("label", { class: "label", for: "aTitle" }, "Title"), title),
+        h("div", { class: "field span-2" }, h("label", { class: "label", for: "aContent" }, "Content"), content),
+        h("label", { class: "checkbox span-2", for: "aPublished" }, published, h("span", {}, "Published — visible on the website (untick to save as draft)"))
+      ),
+      error,
+      h("div", { class: "modal-actions" },
+        h("button", { type: "button", class: "btn btn-ghost", onclick: () => close() }, "Cancel"),
+        submit
+      )
+    );
+
+    const close = openModal(item ? "Edit announcement" : "New announcement", form, { wide: true });
+  }
+
+  // ------------------------------------------------
+  // BLUE GEM LOCK PRICE
+  // ------------------------------------------------
+
+  async function renderPrices(panel) {
+    loadingPanel(panel);
+    let prices;
+    try {
+      prices = await GT.api.listLockPrices();
+    } catch (error) {
+      panel.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {}, `${error.message} If you just updated the website, run the latest supabase/schema.sql.`)));
+      return;
+    }
+
+    const date = h("input", { class: "input", id: "pDate", type: "date", value: GT.api.todayISO(), required: true });
+    const price = h("input", { class: "input", id: "pBgl", type: "number", min: "1", step: "1", inputmode: "numeric", placeholder: "e.g. 25000", required: true });
+    const error = h("p", { class: "error-text", role: "alert" });
+    const submit = h("button", { type: "submit", class: "btn btn-primary" }, "Save price");
+
+    const form = h("form", {
+      class: "card price-form",
+      novalidate: true,
+      onsubmit: async event => {
+        event.preventDefault();
+        error.textContent = "";
+        const value = Number(price.value);
+        if (!date.value || !Number.isInteger(value) || value <= 0) {
+          error.textContent = "Enter a date and a whole price above 0.";
+          return;
+        }
+        submit.disabled = true;
+        try {
+          await admin.saveLockPrice({ recordedOn: date.value, price: value });
+          toast(`Price for ${formatDay(date.value)} saved.`, "success");
+          renderDashboard();
+        } catch (err) {
+          error.textContent = err.message;
+          submit.disabled = false;
+        }
+      }
+    },
+      h("h2", { class: "card-title" }, "Record Blue Gem Lock price"),
+      h("p", { class: "help price-form-help" }, "One price per date. Saving a date that already exists replaces its price."),
+      h("div", { class: "price-form-row" },
+        h("div", { class: "field" }, h("label", { class: "label", for: "pDate" }, "Date"), date),
+        h("div", { class: "field" }, h("label", { class: "label", for: "pBgl" }, "Price (Rp)"), price),
+        h("div", { class: "field price-form-submit" }, submit)
+      ),
+      error
+    );
+
+    const history = prices.slice().reverse();
+
+    panel.replaceChildren(
+      form,
+      prices.length > 1
+        ? h("div", { class: "card admin-chart" },
+            h("h2", { class: "card-title" }, "Preview"),
+            GT.lineChart(prices.map(p => ({ date: p.recordedOn, value: p.price })), {
+              label: "Blue Gem Lock price in Rupiah",
+              formatValue: value => formatRupiah(value),
+              formatDate: formatDay,
+              formatDateShort: iso => new Date(`${iso}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short" })
+            }))
+        : null,
+      history.length === 0
+        ? h("div", { class: "state-block" }, h("p", { class: "state-title" }, "No prices recorded yet"))
+        : h("div", { class: "data-table-wrap" },
+            h("table", { class: "data-table compact" },
+              h("thead", {}, h("tr", {},
+                h("th", { scope: "col" }, "Date"),
+                h("th", { scope: "col", class: "num" }, "Price"),
+                h("th", { scope: "col", class: "num" }, "Change"),
+                h("th", { scope: "col", class: "num" }, "Actions")
+              )),
+              h("tbody", {}, history.map((entry, index) => {
+                const prev = history[index + 1];
+                const diff = prev ? entry.price - prev.price : null;
+                return h("tr", {},
+                  h("td", {}, formatDay(entry.recordedOn)),
+                  h("td", { class: "num" }, formatRupiah(entry.price)),
+                  h("td", { class: "num muted" }, diff === null ? "—" : `${diff > 0 ? "▲ +" : diff < 0 ? "▼ −" : "■ "}${formatRupiah(Math.abs(diff))}`),
+                  h("td", {}, h("div", { class: "row-actions" },
+                    h("button", {
+                      type: "button",
+                      class: "btn btn-outline btn-sm",
+                      onclick: () => {
+                        date.value = entry.recordedOn;
+                        price.value = entry.price;
+                        price.focus();
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }
+                    }, "Edit"),
+                    h("button", {
+                      type: "button",
+                      class: "btn btn-danger btn-sm",
+                      onclick: async () => {
+                        const ok = await confirmDialog({ title: "Delete this price?", message: `${formatDay(entry.recordedOn)} — ${formatRupiah(entry.price)}`, confirmLabel: "Delete", danger: true });
+                        if (!ok) return;
+                        try {
+                          await admin.deleteLockPrice(entry.recordedOn);
+                          toast("Price deleted.", "success");
+                          renderDashboard();
+                        } catch (err) {
+                          toast(err.message, "error");
+                        }
+                      }
+                    }, "Delete")
+                  ))
+                );
+              }))
+            )
+          )
+    );
+  }
+
+  // ------------------------------------------------
+  // DOWNLOADS
+  // ------------------------------------------------
+
+  async function renderDownloads(panel) {
+    loadingPanel(panel);
+    let status;
+    try {
+      status = await GT.api.getStoreStatus();
+    } catch (error) {
+      status = null;
+    }
+
+    if (!status || !status.downloads) {
+      panel.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {}, "Couldn't read download settings. If you just updated the website, run the latest supabase/schema.sql.")));
+      return;
+    }
+
+    const platforms = [
+      ["windows", "Windows"],
+      ["android", "Android"],
+      ["ios", "iOS"],
+      ["mac", "macOS"]
+    ];
+    const inputs = {};
+    const error = h("p", { class: "error-text", role: "alert" });
+    const submit = h("button", { type: "submit", class: "btn btn-primary" }, "Save links");
+
+    panel.replaceChildren(h("form", {
+      class: "card",
+      novalidate: true,
+      onsubmit: async event => {
+        event.preventDefault();
+        error.textContent = "";
+        const links = Object.fromEntries(Object.entries(inputs).map(([key, input]) => [key, input.value.trim()]));
+        const bad = Object.values(links).find(value => value && !/^https:\/\//.test(value));
+        if (bad) {
+          error.textContent = "Every link must start with https://";
+          return;
+        }
+        submit.disabled = true;
+        try {
+          await admin.setDownloads(links);
+          toast("Download links saved.", "success");
+          renderDashboard();
+        } catch (err) {
+          error.textContent = err.message;
+          submit.disabled = false;
+        }
+      }
+    },
+      h("h2", { class: "card-title" }, "Client download links"),
+      h("p", { class: "help downloads-help" }, "Shown on the landing page. Leave a link empty to show “Coming soon” for that platform."),
+      platforms.map(([key, label]) => {
+        inputs[key] = h("input", {
+          class: "input",
+          id: `dl-${key}`,
+          type: "url",
+          inputmode: "url",
+          placeholder: "https://…",
+          value: status.downloads[key] || ""
+        });
+        return h("div", { class: "field" }, h("label", { class: "label", for: `dl-${key}` }, label), inputs[key]);
+      }),
+      error,
+      h("div", { class: "modal-actions start no-margin" }, submit, h("a", { class: "btn btn-ghost", href: "index.html#download", target: "_blank", rel: "noopener" }, "View on site"))
+    ));
+  }
+
+  // ------------------------------------------------
   // INIT
   // ------------------------------------------------
 
@@ -873,6 +1193,16 @@
     $("#modeBanner").replaceChildren(h("div", { class: "mode-banner" },
       "Demo mode — no login required. Data is stored only in this browser and does not reach real customers. Connect Supabase (js/config.js) for real orders and admin login."));
   }
+
+  // Pindah tab lewat link #hash (mis. admin.html#prices).
+  const TABS = ["overview", "orders", "products", "announcements", "prices", "downloads"];
+  window.addEventListener("hashchange", () => {
+    const tab = window.location.hash.replace("#", "");
+    if (state.session && TABS.includes(tab) && tab !== state.tab) {
+      state.tab = tab;
+      renderDashboard();
+    }
+  });
 
   (async function init() {
     try {

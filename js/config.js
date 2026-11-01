@@ -1,4 +1,4 @@
-// GTPLAY v3.2 (maintenance toggle)
+// GTPLAY v3.3 (landing page)
 // ==================================================
 // GTPLAY CONFIGURATION
 // --------------------------------------------------
@@ -29,6 +29,17 @@ GT.config = Object.freeze({
     discord: "",
     youtube: ""
   },
+
+  // ------------------------------------------------
+  // STATUS SERVER (landing page)
+  // ------------------------------------------------
+  // URL yang mengembalikan JSON:
+  //   { "online": true, "players": 123, "worlds": 45 }
+  // Nanti diisi dengan URL perantara (Supabase Edge Function)
+  // untuk API GTPS Cloud. Kosong = tampil "Coming soon".
+  // JANGAN taruh API key GTPS Cloud di file ini.
+  SERVER_STATUS_URL: "",
+  SERVER_STATUS_REFRESH_SECONDS: 60,
 
   // Petunjuk singkat cara memakai redeem code, tampil di bawah code
   // pada halaman pembayaran & Track Order. Sesuaikan dengan cara

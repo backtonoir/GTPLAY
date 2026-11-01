@@ -122,9 +122,14 @@ Semua di **`js/config.js`**.
 
 **Upgrade database yang sudah berjalan:** jalankan ulang seluruh isi `supabase/schema.sql` di SQL Editor. Aman diulang — data, produk, dan admin tidak hilang; kolom `redeem_code` dan fungsi baru akan ditambahkan.
 
-## Pengumuman
+## Landing page (index.html)
 
-Edit array `announcements` di `js/announcement.js`. `category`: `event`, `update`, atau `maintenance`.
+Halaman utama sekarang landing page; toko pindah ke `store.html`.
+
+- **Status server / player / world** — dibaca dari `SERVER_STATUS_URL` di `js/config.js` (JSON `{ "online": true, "players": 123, "worlds": 45 }`). Kosong = "Coming soon". Untuk GTPS Cloud akan dibuat perantara (Supabase Edge Function) agar API key tidak pernah ada di website.
+- **Harga Blue Gem Lock** — Admin → **BGL Price**: isi tanggal + harga (Rupiah). Satu harga per tanggal; grafik muncul setelah ada minimal 2 data.
+- **Download** — Admin → **Downloads**: isi link Windows / Android (wajib `https://`). Link kosong tampil "Coming soon" (iOS & macOS).
+- **Pengumuman** — Admin → **Announcements**: tambah, edit, hapus, atau simpan sebagai draft. Tampil di landing page (3 terbaru) dan `announcement.html`.
 
 ## Konfigurasi backend (Supabase)
 

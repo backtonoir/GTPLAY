@@ -361,6 +361,12 @@ create table if not exists public.store_settings (
 
 insert into public.store_settings (id) values (true) on conflict (id) do nothing;
 
+-- Link download client (diisi dari Admin → Downloads).
+alter table public.store_settings add column if not exists download_windows text check (download_windows is null or download_windows ~ '^https://');
+alter table public.store_settings add column if not exists download_android text check (download_android is null or download_android ~ '^https://');
+alter table public.store_settings add column if not exists download_ios     text check (download_ios is null or download_ios ~ '^https://');
+alter table public.store_settings add column if not exists download_mac     text check (download_mac is null or download_mac ~ '^https://');
+
 alter table public.store_settings enable row level security;
 -- Tanpa policy: dibaca/diubah hanya lewat RPC di bawah.
 
@@ -375,11 +381,84 @@ as $$
     'maintenance', coalesce(s.maintenance, false),
     'message', coalesce(s.maintenance_message, ''),
     'eta', coalesce(s.maintenance_eta, ''),
-    'updatedAt', s.updated_at
+    'updatedAt', s.updated_at,
+    'downloads', jsonb_build_object(
+      'windows', coalesce(s.download_windows, ''),
+      'android', coalesce(s.download_android, ''),
+      'ios', coalesce(s.download_ios, ''),
+      'mac', coalesce(s.download_mac, '')
+    )
   )
   from public.store_settings s
   where s.id;
 $$;
+
+-- --------------------------------------------------
+-- LANDING PAGE CONTENT
+-- --------------------------------------------------
+
+-- Pengumuman (dikelola dari Admin → Announcements).
+create table if not exists public.announcements (
+  id           uuid primary key default gen_random_uuid(),
+  category     text not null default 'update' check (category in ('event', 'update', 'maintenance')),
+  title        text not null check (length(btrim(title)) between 1 and 120),
+  content      text not null check (length(content) between 1 and 2000),
+  published_on date not null default (now() at time zone 'Asia/Jakarta')::date,
+  published    boolean not null default true,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+create index if not exists announcements_published_idx on public.announcements (published, published_on desc);
+
+drop trigger if exists announcements_touch on public.announcements;
+create trigger announcements_touch
+  before update on public.announcements
+  for each row execute function public.touch_updated_at();
+
+alter table public.announcements enable row level security;
+
+drop policy if exists "announcements: public reads published" on public.announcements;
+create policy "announcements: public reads published" on public.announcements
+  for select to anon, authenticated
+  using (published or public.is_admin());
+
+drop policy if exists "announcements: admin writes" on public.announcements;
+create policy "announcements: admin writes" on public.announcements
+  for all to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- Pengumuman awal (dari announcement.js lama) — hanya jika tabel masih kosong.
+insert into public.announcements (category, title, content, published_on)
+select v.category, v.title, v.content, v.published_on
+from (values
+  ('event', 'Double Drop Rate Weekend!', 'Semua drop rate di server GTPLAY naik 2x lipat selama akhir pekan ini. Jangan lewatkan kesempatan farming item langka!', date '2026-11-01'),
+  ('update', 'Restock Magplant Tersedia', 'Stok Magplant 5K sampai 100K sudah tersedia kembali di Store. Pembayaran via QRIS, pesanan diproses setelah admin memverifikasi bukti pembayaran.', date '2026-10-28'),
+  ('maintenance', 'Jadwal Maintenance Mingguan', 'Server akan maintenance setiap Senin pukul 02.00–04.00 WIB untuk optimasi performa. Mohon tidak melakukan transaksi selama jam tersebut.', date '2026-10-25'),
+  ('update', 'Perbaikan Sistem Checkout', 'Sistem checkout & konfirmasi pembayaran QRIS sudah diperbarui agar lebih stabil. Laporkan ke Admin via WhatsApp jika masih menemukan kendala.', date '2026-10-20')
+) as v(category, title, content, published_on)
+where not exists (select 1 from public.announcements);
+
+-- Riwayat harga Blue Gem Lock dalam Rupiah (satu harga per tanggal).
+create table if not exists public.lock_prices (
+  recorded_on date primary key,
+  price       integer not null check (price > 0),
+  created_at  timestamptz not null default now()
+);
+
+alter table public.lock_prices enable row level security;
+
+drop policy if exists "lock_prices: public reads" on public.lock_prices;
+create policy "lock_prices: public reads" on public.lock_prices
+  for select to anon, authenticated
+  using (true);
+
+drop policy if exists "lock_prices: admin writes" on public.lock_prices;
+create policy "lock_prices: admin writes" on public.lock_prices
+  for all to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- --------------------------------------------------
 -- CUSTOMER RPCs
@@ -781,6 +860,38 @@ begin
   return public.get_store_status();
 end $$;
 
+-- Link download dari Admin → Downloads (kosong = "Coming soon").
+create or replace function public.admin_set_downloads(p_windows text, p_android text, p_ios text, p_mac text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_links text[] := array[p_windows, p_android, p_ios, p_mac];
+  v_link text;
+begin
+  perform public.gt_require_admin();
+
+  foreach v_link in array v_links loop
+    if nullif(btrim(coalesce(v_link, '')), '') is not null and btrim(v_link) !~ '^https://' then
+      raise exception 'GT:INVALID_LINK';
+    end if;
+  end loop;
+
+  insert into public.store_settings (id) values (true) on conflict (id) do nothing;
+
+  update public.store_settings
+    set download_windows = nullif(btrim(coalesce(p_windows, '')), ''),
+        download_android = nullif(btrim(coalesce(p_android, '')), ''),
+        download_ios     = nullif(btrim(coalesce(p_ios, '')), ''),
+        download_mac     = nullif(btrim(coalesce(p_mac, '')), ''),
+        updated_at = now()
+    where id;
+
+  return public.get_store_status();
+end $$;
+
 -- --------------------------------------------------
 -- FUNCTION PRIVILEGES
 -- --------------------------------------------------
@@ -819,6 +930,8 @@ revoke all on function public.get_store_status()                      from publi
 revoke all on function public.admin_set_maintenance(boolean, text, text) from public, anon;
 grant execute on function public.get_store_status()                   to anon, authenticated;
 grant execute on function public.admin_set_maintenance(boolean, text, text) to authenticated;
+revoke all on function public.admin_set_downloads(text, text, text, text) from public, anon;
+grant execute on function public.admin_set_downloads(text, text, text, text) to authenticated;
 
 -- --------------------------------------------------
 -- STORAGE

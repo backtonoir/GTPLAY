@@ -1,4 +1,4 @@
-// GTPLAY v3.2 (maintenance toggle)
+// GTPLAY v3.3 (landing page)
 // GTPLAY SHARED LAYOUT
 // --------------------------------------------------
 // Dipakai semua halaman toko:
@@ -203,7 +203,7 @@ GT.layout = (function () {
         h("div", { class: "state-block" },
           h("p", { class: "state-title" }, "Your cart is empty"),
           h("p", { class: "state-text" }, "Browse the store and add the items you need."),
-          h("a", { class: "btn btn-outline", href: "index.html#store", onclick: closeCart }, "Browse items")
+          h("a", { class: "btn btn-outline", href: "store.html#store", onclick: closeCart }, "Browse items")
         )
       );
       return;
@@ -268,7 +268,7 @@ GT.layout = (function () {
       button.addEventListener("click", event => {
         event.preventDefault();
         if (withDrawer) openCart();
-        else window.location.href = "index.html#store";
+        else window.location.href = "store.html#store";
       });
     });
 

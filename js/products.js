@@ -1,4 +1,4 @@
-// GTPLAY v3.2 (maintenance toggle)
+// GTPLAY v3.3 (landing page)
 // ==================================================
 // GTPLAY PRODUCT CATALOG (SEED / DEMO DATA)
 // --------------------------------------------------
@@ -99,5 +99,52 @@ GT.seedProducts = [
     image: "images/items/magplant.png",
     fallback: "MAG100K",
     sortOrder: 6
+  }
+];
+
+// ==================================================
+// PENGUMUMAN AWAL (DEMO)
+// --------------------------------------------------
+// Mode Supabase: pengumuman dikelola dari Admin →
+// Announcements (tabel `announcements`). Data di bawah
+// hanya dipakai di demo mode.
+// ==================================================
+
+GT.seedAnnouncements = [
+  {
+    id: "ann-1",
+    category: "event",
+    title: "Double Drop Rate Weekend!",
+    content: "Semua drop rate di server GTPLAY naik 2x lipat selama akhir pekan ini. Jangan lewatkan kesempatan farming item langka!",
+    publishedOn: "2026-11-01",
+    published: true,
+    createdAt: "2026-11-01T00:00:00.000Z"
+  },
+  {
+    id: "ann-2",
+    category: "update",
+    title: "Restock Magplant Tersedia",
+    content: "Stok Magplant 5K sampai 100K sudah tersedia kembali di Store. Pembayaran via QRIS, pesanan diproses setelah admin memverifikasi bukti pembayaran.",
+    publishedOn: "2026-10-28",
+    published: true,
+    createdAt: "2026-10-28T00:00:00.000Z"
+  },
+  {
+    id: "ann-3",
+    category: "maintenance",
+    title: "Jadwal Maintenance Mingguan",
+    content: "Server akan maintenance setiap Senin pukul 02.00–04.00 WIB untuk optimasi performa. Mohon tidak melakukan transaksi selama jam tersebut.",
+    publishedOn: "2026-10-25",
+    published: true,
+    createdAt: "2026-10-25T00:00:00.000Z"
+  },
+  {
+    id: "ann-4",
+    category: "update",
+    title: "Perbaikan Sistem Checkout",
+    content: "Sistem checkout & konfirmasi pembayaran QRIS sudah diperbarui agar lebih stabil. Laporkan ke Admin via WhatsApp jika masih menemukan kendala.",
+    publishedOn: "2026-10-20",
+    published: true,
+    createdAt: "2026-10-20T00:00:00.000Z"
   }
 ];

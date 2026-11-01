@@ -1,4 +1,4 @@
-// GTPLAY v3.2 (maintenance toggle)
+// GTPLAY v3.3 (landing page)
 // ==================================================
 // GTPLAY ORDER TIMELINE
 // --------------------------------------------------
@@ -101,5 +101,28 @@ GT.redeemBlock = function (order) {
         }, "Copy all codes")
       : null,
     h("p", { class: "help redeem-help" }, GT.config.REDEEM_HELP || "")
+  );
+};
+
+// ==================================================
+// ANNOUNCEMENT CARD
+// --------------------------------------------------
+// Dipakai landing page & halaman Announcement.
+// ==================================================
+
+GT.announcementCard = function (item) {
+  const { h } = GT.utils;
+  const category = ["event", "update", "maintenance"].includes(item.category) ? item.category : "update";
+  const date = item.publishedOn
+    ? new Date(`${item.publishedOn}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+    : "";
+
+  return h("article", { class: "announcement-card" },
+    h("div", { class: "announcement-top" },
+      h("span", { class: `announcement-badge ${category}` }, category),
+      h("time", { class: "announcement-date", datetime: item.publishedOn || "" }, date)
+    ),
+    h("h3", {}, item.title),
+    h("p", {}, item.content)
   );
 };

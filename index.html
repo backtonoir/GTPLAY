@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>GTPLAY Store — Growtopia Private Server Items</title>
-  <meta name="description" content="Buy GTPLAY Growtopia Private Server items. Pay with QRIS, verified by admin, and track your order." />
+  <title>GTPLAY — Growtopia Private Server</title>
+  <meta name="description" content="GTPLAY Growtopia Private Server: server status, Blue Gem Lock price, client downloads, announcements, and the official item store." />
   <meta name="theme-color" content="#09090b" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="GTPLAY Store" />
-  <meta property="og:title" content="GTPLAY Store — Growtopia Private Server Items" />
-  <meta property="og:description" content="Buy GTPLAY Growtopia Private Server items. Pay with QRIS, verified by admin, and track your order." />
+  <meta property="og:title" content="GTPLAY — Growtopia Private Server" />
+  <meta property="og:description" content="GTPLAY Growtopia Private Server: server status, Blue Gem Lock price, client downloads, announcements, and the official item store." />
   <meta property="og:image" content="images/brand/og-image.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -30,10 +30,10 @@
       </a>
 
       <nav class="site-nav" id="siteNav" aria-label="Main">
-        <a href="index.html#home" data-page="index.html">Home</a>
-        <a href="index.html#store">Store</a>
-        <a href="index.html#how-to-buy">How to Buy</a>
-        <a href="index.html#faq">FAQ</a>
+        <a href="index.html" data-page="index.html">Home</a>
+        <a href="store.html" data-page="store.html">Store</a>
+        <a href="store.html#how-to-buy">How to Buy</a>
+        <a href="store.html#faq">FAQ</a>
         <a href="track.html" data-page="track.html">Track Order</a>
         <a href="announcement.html" data-page="announcement.html">Announcement</a>
       </nav>
@@ -53,7 +53,7 @@
 
   <main id="main">
 
-    <section class="hero" id="home">
+    <section class="hero hero-landing" id="home">
       <div class="hero-bg" aria-hidden="true">
         <img
           src="images/brand/hero-1600.webp"
@@ -68,231 +68,82 @@
 
       <div class="container hero-inner">
         <div class="hero-copy reveal">
-          <p class="eyebrow">GTPLAY · Growtopia Private Server</p>
-          <h1>Your Ultimate Gaming <em>Marketplace</em></h1>
+          <p class="eyebrow">Growtopia Private Server</p>
+          <h1>Welcome to <em>GTPLAY</em></h1>
           <p class="hero-sub">
-            Buy GTPLAY items in a few taps. Pay with QRIS, get your payment
-            checked by our admin, and get your redeem code right on the order page.
+            Download the client, check who's online, follow the Blue Gem Lock price,
+            and grab items from the official GTPLAY Store.
           </p>
           <div class="hero-actions">
-            <a href="#store" class="btn btn-primary btn-lg">Explore Store</a>
-            <a href="#how-to-buy" class="btn btn-outline btn-lg">How to Buy</a>
+            <a href="#download" class="btn btn-primary btn-lg">Download</a>
+            <a href="store.html" class="btn btn-outline btn-lg">Visit Store</a>
           </div>
-          <ul class="hero-points" aria-label="Store highlights">
-            <li>QRIS payment</li>
-            <li>Checked by a real admin</li>
-            <li>Redeem code delivery</li>
-            <li>Order tracking</li>
-          </ul>
         </div>
-
       </div>
     </section>
 
-    <section class="section" id="store" aria-labelledby="storeTitle">
+    <section class="status-section" aria-labelledby="statusTitle">
+      <div class="container">
+        <h2 class="sr-only" id="statusTitle">Server status</h2>
+        <div class="server-grid" id="serverStatus" aria-live="polite">
+          <div class="server-tile"><p class="server-label">Server</p><p class="server-value">…</p></div>
+          <div class="server-tile"><p class="server-label">Players online</p><p class="server-value">…</p></div>
+          <div class="server-tile"><p class="server-label">Active worlds</p><p class="server-value">…</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="price" aria-labelledby="priceTitle">
       <div class="container">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Item collection</p>
-            <h2 id="storeTitle">Store</h2>
-            <p>Pick your items, check the stock, and add them to your cart.</p>
+            <p class="eyebrow">Market</p>
+            <h2 id="priceTitle">Blue Gem Lock Price</h2>
+            <p>Harga Blue Gem Lock dalam Rupiah, diperbarui oleh admin GTPLAY.</p>
           </div>
         </div>
-
-        <div class="store-toolbar">
-          <label class="search-field">
-            <span class="sr-only">Search items</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-            <input class="input" type="search" id="searchInput" placeholder="Search items…" autocomplete="off" />
-          </label>
-          <label class="select-field">
-            <span class="sr-only">Sort items</span>
-            <select class="select" id="sortSelect">
-              <option value="featured">Sort: Featured</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-              <option value="name-asc">Name: A–Z</option>
-              <option value="stock-desc">Stock: Most available</option>
-            </select>
-          </label>
+        <div class="card price-card" id="bglPrice">
+          <div class="state-block borderless"><span class="spinner" aria-hidden="true"></span>Loading prices…</div>
         </div>
-
-        <div class="chips" id="categoryChips" role="group" aria-label="Filter by category"></div>
-        <p class="result-meta" id="resultMeta" aria-live="polite"></p>
-        <div class="product-grid" id="productGrid" aria-busy="true"></div>
       </div>
     </section>
 
-    <section class="section section-alt" id="how-to-buy" aria-labelledby="howTitle">
-      <span id="payment" aria-hidden="true"></span>
+    <section class="section section-alt" id="download" aria-labelledby="downloadTitle">
       <div class="container">
         <div class="section-head">
           <div>
-            <p class="eyebrow">How to buy</p>
-            <h2 id="howTitle">Four steps to your item</h2>
-            <p>The whole flow takes a few minutes. Keep your Order ID — you'll need it to track your order.</p>
+            <p class="eyebrow">Play now</p>
+            <h2 id="downloadTitle">Download GTPLAY</h2>
+            <p>Pilih platform kamu lalu install client GTPLAY.</p>
           </div>
         </div>
-
-        <ol class="steps">
-          <li class="step">
-            <h3>Choose items</h3>
-            <p>Search or filter the store, then add items to your cart. Quantities are limited to the available stock.</p>
-          </li>
-          <li class="step">
-            <h3>Checkout</h3>
-            <p>Enter your GrowID and confirm. You get an Order ID, an access code, and a 5-minute payment session.</p>
-          </li>
-          <li class="step">
-            <h3>Pay with QRIS</h3>
-            <p>Scan the QRIS, pay the exact total, upload your payment screenshot, and tap <strong>I Have Paid</strong>.</p>
-          </li>
-          <li class="step">
-            <h3>Copy your redeem code</h3>
-            <p>An admin checks your payment and adds your redeem code. Copy it from the payment page or Track Order and redeem it in game.</p>
-          </li>
-        </ol>
-
-        <div class="guide" id="payment-guide">
-          <div class="guide-card">
-            <h3>Payment guide — QRIS</h3>
-            <ol>
-              <li>Open any banking or e-wallet app that supports QRIS.</li>
-              <li>Choose <em>Scan / Bayar QRIS</em> and scan the code on the payment page.</li>
-              <li>Enter the <strong>exact</strong> Total Payment shown on the page.</li>
-              <li>Finish the payment and take a screenshot of the receipt.</li>
-              <li>Upload the screenshot on the payment page and tap <strong>I Have Paid</strong>.</li>
-            </ol>
-          </div>
-          <div class="guide-card">
-            <h3>Good to know</h3>
-            <ul>
-              <li>The payment session lasts 5 minutes. Refreshing the page does not reset the timer.</li>
-              <li>Payments are verified manually by an admin — there is no automatic confirmation.</li>
-              <li>Your redeem code appears once the order is Completed — it stays on Track Order, so keep your Order ID and access code.</li>
-              <li>Paid after the timer ran out? Don't pay again — send your proof to the admin.</li>
-            </ul>
-          </div>
-        </div>
+        <div class="download-grid" id="downloadGrid"></div>
       </div>
     </section>
 
-    <section class="section" id="trust" aria-labelledby="trustTitle">
+    <section class="section" id="news" aria-labelledby="newsTitle">
       <div class="container">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Why GTPLAY Store</p>
-            <h2 id="trustTitle">Simple and clear</h2>
+            <p class="eyebrow">Latest news</p>
+            <h2 id="newsTitle">Announcements</h2>
           </div>
+          <a class="btn btn-outline btn-sm" href="announcement.html">View all</a>
         </div>
-
-        <div class="trust-grid">
-          <article class="trust-card">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>
-            <h3>QRIS Payment</h3>
-            <p>Pay with any banking or e-wallet app that supports QRIS. Every payment is checked by an admin before the order is processed.</p>
-          </article>
-          <article class="trust-card">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
-            <h3>Redeem Code Delivery</h3>
-            <p>Once your payment is verified, the admin gives you a redeem code you can copy straight from your order page. Timing depends on the admin queue.</p>
-          </article>
-          <article class="trust-card">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>
-            <h3>Admin Support</h3>
-            <p>Questions or a problem with your order? Contact the GTPLAY admin directly on WhatsApp with your Order ID.</p>
-          </article>
-          <article class="trust-card">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
-            <h3>Order Tracking</h3>
-            <p>Every order gets an Order ID and access code, so you can check its status from payment to completion.</p>
-          </article>
+        <div class="announcement-list" id="latestAnnouncements">
+          <div class="state-block borderless"><span class="spinner" aria-hidden="true"></span>Loading…</div>
         </div>
       </div>
     </section>
 
-    <section class="section section-alt" id="faq" aria-labelledby="faqTitle">
-      <div class="container">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">FAQ</p>
-            <h2 id="faqTitle">Pertanyaan yang sering ditanyakan</h2>
-          </div>
-        </div>
-
-        <div class="faq-list">
-          <details class="faq-item">
-            <summary>Bagaimana cara membeli item?</summary>
-            <div class="faq-answer">
-              Pilih item di <a href="#store">Store</a>, tekan <strong>Add to Cart</strong>, lalu buka keranjang dan tekan
-              <strong>Checkout</strong>. Isi GrowID kamu, konfirmasi pesanan, kemudian selesaikan pembayaran QRIS di halaman pembayaran.
-            </div>
-          </details>
-          <details class="faq-item">
-            <summary>Bagaimana cara membayar melalui QRIS?</summary>
-            <div class="faq-answer">
-              Scan kode QRIS dengan aplikasi bank atau e-wallet yang mendukung QRIS, masukkan nominal <strong>persis</strong> sesuai
-              Total Payment, selesaikan pembayaran, lalu upload screenshot bukti bayar dan tekan <strong>I Have Paid</strong>.
-              Lihat <a href="#payment-guide">Payment Guide</a> untuk langkah lengkapnya.
-            </div>
-          </details>
-          <details class="faq-item">
-            <summary>Berapa lama waktu pengiriman?</summary>
-            <div class="faq-answer">
-              Item diberikan dalam bentuk <strong>redeem code</strong> oleh admin setelah pembayaran diverifikasi. Lamanya tergantung
-              antrean pesanan dan jam aktif admin. Begitu pesanan berstatus <em>Completed</em>, redeem code muncul di halaman pembayaran
-              dan di <a href="track.html">Track Order</a> — tinggal tekan <strong>Copy</strong> lalu redeem di game.
-            </div>
-          </details>
-          <details class="faq-item">
-            <summary>Bagaimana jika pembayaran gagal?</summary>
-            <div class="faq-answer">
-              Jika saldo belum terpotong, ulangi pembayaran selama sesi masih aktif. Jika saldo <strong>sudah terpotong</strong> tetapi
-              status pesanan belum berubah, jangan membayar ulang — hubungi admin melalui WhatsApp dengan Order ID dan bukti pembayaran.
-            </div>
-          </details>
-          <details class="faq-item">
-            <summary>Bagaimana jika QRIS expired?</summary>
-            <div class="faq-answer">
-              Sesi pembayaran berlaku 5 menit. Jika waktu habis sebelum kamu membayar, pesanan otomatis menjadi <em>Expired</em> dan
-              stok dikembalikan — buat pesanan baru dengan tombol <strong>Order again</strong>. Jika kamu sudah terlanjur membayar
-              setelah waktu habis, kirim bukti pembayaran ke admin agar bisa diperiksa secara manual.
-            </div>
-          </details>
-          <details class="faq-item">
-            <summary>Di mana saya mendapatkan redeem code?</summary>
-            <div class="faq-answer">
-              Setelah admin menandai pesanan sebagai <em>Completed</em>, redeem code tampil di halaman pembayaran pesananmu dan di
-              <a href="track.html">Track Order</a> (masukkan Order ID + kode akses). Tekan <strong>Copy</strong>, lalu redeem di game GTPLAY.
-              Jika code tidak bisa dipakai, hubungi admin dengan Order ID kamu.
-            </div>
-          </details>
-          <details class="faq-item">
-            <summary>Bagaimana cara mengecek status pesanan?</summary>
-            <div class="faq-answer">
-              Buka halaman <a href="track.html">Track Order</a>, lalu masukkan Order ID dan kode akses yang ditampilkan di halaman
-              pembayaran. Pesanan yang dibuat dari perangkat ini juga tersimpan di sana untuk akses cepat.
-            </div>
-          </details>
-          <details class="faq-item">
-            <summary>Bagaimana cara menghubungi admin?</summary>
-            <div class="faq-answer">
-              Hubungi admin GTPLAY melalui <a href="https://wa.me/6283829870348" target="_blank" rel="noopener noreferrer">WhatsApp</a>. Sertakan Order ID
-              kamu agar admin bisa membantu lebih cepat.
-            </div>
-          </details>
-        </div>
-      </div>
-    </section>
-
-    <section class="section" aria-label="Contact admin">
+    <section class="section section-tight-bottom" aria-label="Visit the store">
       <div class="container">
         <div class="cta-band">
           <div>
-            <h2>Need help with an order?</h2>
-            <p>Chat with the GTPLAY admin on WhatsApp — have your Order ID ready.</p>
+            <h2>Need items for your world?</h2>
+            <p>Magplants and more — pay with QRIS and get your redeem code on the order page.</p>
           </div>
-          <a class="btn btn-light btn-lg" href="https://wa.me/6283829870348" target="_blank" rel="noopener noreferrer">Contact Admin</a>
+          <a class="btn btn-light btn-lg" href="store.html">Visit Store</a>
         </div>
       </div>
     </section>
@@ -313,8 +164,8 @@
         <div class="footer-col">
           <h3>Help</h3>
           <ul>
-            <li><a href="index.html#faq">FAQ</a></li>
-            <li><a href="index.html#how-to-buy">Payment Guide</a></li>
+            <li><a href="store.html#faq">FAQ</a></li>
+            <li><a href="store.html#how-to-buy">Payment Guide</a></li>
             <li><a href="track.html">Track Order</a></li>
             <li><a href="https://wa.me/6283829870348" target="_blank" rel="noopener noreferrer">Contact Admin</a></li>
           </ul>
@@ -323,6 +174,8 @@
         <div class="footer-col">
           <h3>Store</h3>
           <ul>
+            <li><a href="store.html">Store</a></li>
+            <li><a href="index.html#download">Download</a></li>
             <li><a href="info.html#about">About GTPLAY</a></li>
             <li><a href="info.html#terms">Terms &amp; Conditions</a></li>
             <li><a href="info.html#refund">Refund Policy</a></li>
@@ -351,6 +204,8 @@
   <script src="js/api.js" defer></script>
   <script src="js/cart.js" defer></script>
   <script src="js/layout.js" defer></script>
-  <script src="js/store.js" defer></script>
+  <script src="js/charts.js" defer></script>
+  <script src="js/timeline.js" defer></script>
+  <script src="js/home.js" defer></script>
 </body>
 </html>
