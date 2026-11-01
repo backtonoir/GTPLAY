@@ -1,4 +1,4 @@
-// GTPLAY v3.4 (server status)
+// GTPLAY v3.5 (server stats via Lua)
 // ==================================================
 // GTPLAY PAYMENT PAGE (payment.html?order=ID#k=CODE)
 // --------------------------------------------------

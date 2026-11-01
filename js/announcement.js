@@ -1,4 +1,4 @@
-// GTPLAY v3.4 (server status)
+// GTPLAY v3.5 (server stats via Lua)
 // ==================================================
 // ANNOUNCEMENT PAGE (announcement.html)
 // --------------------------------------------------

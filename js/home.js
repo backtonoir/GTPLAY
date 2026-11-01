@@ -1,4 +1,4 @@
-// GTPLAY v3.4 (server status)
+// GTPLAY v3.5 (server stats via Lua)
 // ==================================================
 // GTPLAY LANDING PAGE (index.html)
 // --------------------------------------------------
@@ -32,7 +32,7 @@
       statusRoot.replaceChildren(
         statTile("Server", h("span", { class: "server-state is-unknown" }, h("span", { class: "dot", "aria-hidden": "true" }), "Coming soon")),
         statTile("Players online", "—"),
-        statTile("Peak online", "—"),
+        statTile("Active worlds", "—"),
         h("p", { class: "server-note" }, "Live server stats will appear here soon.")
       );
       return;
@@ -42,26 +42,26 @@
       statusRoot.replaceChildren(
         statTile("Server", h("span", { class: "server-state is-unknown" }, h("span", { class: "dot", "aria-hidden": "true" }), "Unavailable")),
         statTile("Players online", "—"),
-        statTile("Peak online", "—"),
+        statTile("Active worlds", "—"),
         h("p", { class: "server-note" }, "Couldn't reach the status service. Retrying shortly.")
       );
       return;
     }
 
-    const hasWorlds = status.worlds !== null && status.worlds !== undefined;
     const notes = [];
     if (status.uptime) notes.push(`Uptime ${status.uptime}`);
-    notes.push(`Updated ${formatDateTime(status.updatedAt)}`);
+    if (status.updatedAt) notes.push(`${status.online ? "Updated" : "Last seen"} ${formatDateTime(status.updatedAt)}`);
 
-    statusRoot.replaceChildren(
+    const has = value => value !== null && value !== undefined;
+
+    statusRoot.replaceChildren(...[
       statTile("Server", h("span", { class: `server-state ${status.online ? "is-online" : "is-offline"}` },
         h("span", { class: "dot", "aria-hidden": "true" }), status.online ? "Online" : "Offline")),
-      statTile("Players online", status.players === null ? "—" : number(status.players)),
-      hasWorlds
-        ? statTile("Active worlds", number(status.worlds))
-        : statTile("Peak online", status.peak === null || status.peak === undefined ? "—" : number(status.peak)),
+      statTile("Players online", has(status.players) ? number(status.players) : "—"),
+      has(status.worlds) ? statTile("Active worlds", number(status.worlds)) : null,
+      has(status.peak) ? statTile("Peak online", number(status.peak)) : null,
       h("p", { class: "server-note" }, notes.join(" · "))
-    );
+    ].filter(Boolean));
   }
 
   async function loadServerStatus() {

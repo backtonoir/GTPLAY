@@ -1,4 +1,4 @@
-/* GTPLAY v3.4 (server status) */
+/* GTPLAY v3.5 (server stats via Lua) */
 /* ==================================================
    GTPLAY STORE — DESIGN SYSTEM
    --------------------------------------------------
@@ -3296,7 +3296,7 @@ textarea.input {
 
 .server-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   gap: 12px;
 }
 
@@ -3665,4 +3665,34 @@ textarea.input {
   .download-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Admin → Server */
+
+.stat-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.server-steps {
+  margin-bottom: 16px;
+}
+
+.lua-script {
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow-x: auto;
+  min-height: 300px;
+}
+
+.scriptSlot,
+.card .stack:empty {
+  display: none;
+}
+
+.card .stack:not(:empty) {
+  margin-top: 16px;
 }

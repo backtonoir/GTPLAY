@@ -1,4 +1,4 @@
-// GTPLAY v3.4 (server status)
+// GTPLAY v3.5 (server stats via Lua)
 // ==================================================
 // GTPLAY DATA LAYER
 // --------------------------------------------------
@@ -119,10 +119,10 @@ GT.api = (function () {
   // yang mengambil data dari API GTPS Cloud.
   // ------------------------------------------------
 
-  async function getServerStatus() {
+  async function getServerStatus(statsFromBackend) {
     const url = GT.config.SERVER_STATUS_URL;
-    // toNumber: null/"" bukan angka.
-    if (!url) return { configured: false };
+    // Tanpa URL khusus → pakai statistik yang dikirim script Lua ke Supabase.
+    if (!url) return statsFromBackend ? statsFromBackend() : { configured: false };
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -790,7 +790,25 @@ GT.api = (function () {
         return rpc("get_store_status");
       },
 
-      getServerStatus,
+      async getServerStatus() {
+        return getServerStatus(async () => {
+          try {
+            const stats = await rpc("get_server_stats");
+            if (!stats || !stats.configured) return { configured: false };
+            return {
+              configured: true,
+              online: Boolean(stats.online),
+              players: stats.online ? stats.players : 0,
+              worlds: stats.online ? stats.worlds : 0,
+              peak: stats.peak,
+              uptime: null,
+              updatedAt: stats.reportedAt
+            };
+          } catch (error) {
+            return { configured: true, error: true };
+          }
+        });
+      },
 
       async listAnnouncements(limit) {
         return selectAnnouncements(limit, true);
@@ -942,6 +960,18 @@ GT.api = (function () {
             p_message: message || null,
             p_eta: eta || null
           });
+        },
+
+        async getServerStats() {
+          return rpc("get_server_stats");
+        },
+
+        async rotateStatsToken() {
+          return rpc("admin_rotate_stats_token");
+        },
+
+        async resetPeak() {
+          return rpc("admin_reset_peak");
         },
 
         async setDownloads(links) {

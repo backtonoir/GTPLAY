@@ -1,4 +1,4 @@
-// GTPLAY v3.4 (server status)
+// GTPLAY v3.5 (server stats via Lua)
 // ==================================================
 // GTPLAY ADMIN DASHBOARD (admin.html)
 // --------------------------------------------------
@@ -229,7 +229,7 @@
     }
 
     const fromHash = window.location.hash.replace("#", "");
-    if (["overview", "orders", "products", "announcements", "prices", "downloads"].includes(fromHash)) state.tab = fromHash;
+    if (["overview", "orders", "products", "announcements", "prices", "downloads", "server"].includes(fromHash)) state.tab = fromHash;
     renderDashboard();
   }
 
@@ -249,7 +249,8 @@
       ["products", `Products (${state.products.length})`],
       ["announcements", "Announcements"],
       ["prices", "BGL Price"],
-      ["downloads", "Downloads"]
+      ["downloads", "Downloads"],
+      ["server", "Server"]
     ];
 
     const panel = h("div", { id: "tabPanel", role: "tabpanel" });
@@ -280,6 +281,7 @@
     else if (state.tab === "announcements") renderAnnouncements(panel);
     else if (state.tab === "prices") renderPrices(panel);
     else if (state.tab === "downloads") renderDownloads(panel);
+    else if (state.tab === "server") renderServer(panel);
     else renderOverview(panel);
   }
 
@@ -1186,6 +1188,145 @@
   }
 
   // ------------------------------------------------
+  // SERVER (stats dikirim script Lua)
+  // ------------------------------------------------
+
+  function luaScript(token) {
+    return [
+      "-- ==================================================",
+      "-- GTPLAY Website Stats Reporter",
+      "-- Mengirim jumlah player online & world aktif ke website",
+      "-- setiap ±60 detik (onAutoSaveRequest).",
+      "-- ==================================================",
+      "",
+      `local SUPABASE_URL = "${GT.config.SUPABASE_URL.trim().replace(/\/+$/, "")}"`,
+      `local ANON_KEY = "${GT.config.SUPABASE_ANON_KEY.trim()}" -- public key (sama dengan website)`,
+      `local STATS_TOKEN = "${token}" -- RAHASIA: jangan dibagikan`,
+      "",
+      "local function reportStats()",
+      "  local players = #getServerPlayers()",
+      "  local worlds = #getWorlds()",
+      "",
+      "  http.request({",
+      "    url = SUPABASE_URL .. \"/rest/v1/rpc/report_server_stats\",",
+      "    method = \"POST\",",
+      "    headers = {",
+      "      [\"Content-Type\"] = \"application/json\",",
+      "      [\"apikey\"] = ANON_KEY,",
+      "      [\"Authorization\"] = \"Bearer \" .. ANON_KEY",
+      "    },",
+      "    body = json.encode({ p_token = STATS_TOKEN, p_players = players, p_worlds = worlds }),",
+      "    callback = function(res)",
+      "      if not res.ok or res.status >= 300 then",
+      "        print(\"[GTPLAY stats] gagal kirim, status: \" .. tostring(res.status))",
+      "      end",
+      "    end",
+      "  })",
+      "end",
+      "",
+      "onAutoSaveRequest(function()",
+      "  reportStats()",
+      "end)",
+      "",
+      "reportStats()",
+      ""
+    ].join("\n");
+  }
+
+  async function renderServer(panel) {
+    if (GT.api.isDemo) {
+      panel.replaceChildren(h("div", { class: "notice notice-info" }, h("p", {}, "Server stats need the Supabase backend. Connect Supabase in js/config.js first.")));
+      return;
+    }
+
+    loadingPanel(panel);
+    let stats;
+    try {
+      stats = await admin.getServerStats();
+    } catch (error) {
+      panel.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {}, `${error.message} If you just updated the website, run the latest supabase/schema.sql.`)));
+      return;
+    }
+
+    const scriptSlot = h("div", { class: "stack" });
+
+    const generate = h("button", {
+      type: "button",
+      class: stats.configured ? "btn btn-outline" : "btn btn-primary",
+      onclick: async () => {
+        if (stats.configured) {
+          const ok = await confirmDialog({
+            title: "Generate a new token?",
+            message: "The old token stops working immediately. You'll need to paste the new script into your server.",
+            confirmLabel: "Generate new token",
+            danger: true
+          });
+          if (!ok) return;
+        }
+        generate.disabled = true;
+        try {
+          const token = await admin.rotateStatsToken();
+          const code = luaScript(token);
+          const area = h("textarea", { class: "input mono lua-script", readonly: true, rows: "18", spellcheck: "false", "aria-label": "Lua script" });
+          area.value = code;
+          scriptSlot.replaceChildren(
+            h("div", { class: "notice notice-warn" }, h("p", {}, h("strong", {}, "Copy this now. "), "The token is shown only once. Keep it secret — anyone with it can send fake stats.")),
+            area,
+            h("div", { class: "modal-actions start no-margin" }, GT.utils.copyButton(code, "Lua script", "btn btn-primary"))
+          );
+          stats.configured = true;
+          generate.textContent = "Generate new token";
+          generate.className = "btn btn-outline";
+          toast("Token created. Copy the script into your server.", "success");
+        } catch (error) {
+          toast(error.message, "error");
+        }
+        generate.disabled = false;
+      }
+    }, stats.configured ? "Generate new token" : "Generate token & script");
+
+    const online = Boolean(stats.online);
+    const reported = stats.reportedAt ? formatDateTime(stats.reportedAt) : "never";
+
+    panel.replaceChildren(
+      h("div", { class: "stat-grid" },
+        statCard("Server", online ? "Online" : "Offline", stats.reportedAt ? `Last report: ${reported}` : "No report received yet"),
+        statCard("Players online", online ? String(stats.players) : "0"),
+        statCard("Active worlds", online ? String(stats.worlds) : "0", "Worlds loaded in memory"),
+        statCard("Peak online", String(stats.peak), "Highest players seen"),
+        h("div", { class: "stat stat-actions" },
+          h("button", { type: "button", class: "btn btn-outline btn-sm", onclick: () => renderDashboard() }, "↻ Refresh"),
+          h("button", {
+            type: "button",
+            class: "btn btn-ghost btn-sm",
+            onclick: async () => {
+              const ok = await confirmDialog({ title: "Reset peak?", message: "Peak online will be set to the current player count.", confirmLabel: "Reset" });
+              if (!ok) return;
+              try {
+                await admin.resetPeak();
+                toast("Peak reset.", "success");
+                renderDashboard();
+              } catch (error) {
+                toast(error.message, "error");
+              }
+            }
+          }, "Reset peak")
+        )
+      ),
+      h("section", { class: "card" },
+        h("h2", { class: "card-title" }, "Connect your game server"),
+        h("ol", { class: "instructions server-steps" },
+          h("li", {}, "Generate a token below. A ready-to-use Lua script appears with your token inside."),
+          h("li", {}, "Copy the script and add it to your server's Lua scripts in GTPS Cloud, then restart or reload the scripts."),
+          h("li", {}, "Within about a minute, the stats above and on the landing page start updating. If the server stops reporting for 3 minutes, it shows as Offline.")
+        ),
+        h("div", { class: "modal-actions start no-margin" }, generate),
+        scriptSlot
+      )
+    );
+  }
+
+  // ------------------------------------------------
   // INIT
   // ------------------------------------------------
 
@@ -1195,7 +1336,7 @@
   }
 
   // Pindah tab lewat link #hash (mis. admin.html#prices).
-  const TABS = ["overview", "orders", "products", "announcements", "prices", "downloads"];
+  const TABS = ["overview", "orders", "products", "announcements", "prices", "downloads", "server"];
   window.addEventListener("hashchange", () => {
     const tab = window.location.hash.replace("#", "");
     if (state.session && TABS.includes(tab) && tab !== state.tab) {

@@ -461,6 +461,77 @@ create policy "lock_prices: admin writes" on public.lock_prices
   with check (public.is_admin());
 
 -- --------------------------------------------------
+-- SERVER STATS (dikirim oleh script Lua di server game)
+-- --------------------------------------------------
+-- Script Lua memanggil report_server_stats setiap ±60 detik
+-- dengan token rahasia. Token dibuat dari Admin → Server
+-- dan hanya hash-nya yang disimpan.
+
+create table if not exists public.server_stats (
+  id             boolean primary key default true check (id),
+  players_online integer not null default 0 check (players_online between 0 and 100000),
+  active_worlds  integer not null default 0 check (active_worlds between 0 and 1000000),
+  peak_players   integer not null default 0 check (peak_players >= 0),
+  reported_at    timestamptz,
+  token_hash     text
+);
+
+insert into public.server_stats (id) values (true) on conflict (id) do nothing;
+
+alter table public.server_stats enable row level security;
+-- Tanpa policy: hanya lewat RPC.
+
+create or replace function public.get_server_stats()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select jsonb_build_object(
+    'configured', s.token_hash is not null,
+    'online', s.reported_at is not null and s.reported_at > now() - interval '3 minutes',
+    'players', s.players_online,
+    'worlds', s.active_worlds,
+    'peak', s.peak_players,
+    'reportedAt', s.reported_at
+  )
+  from public.server_stats s
+  where s.id;
+$$;
+
+-- Dipanggil oleh script Lua server (role anon + token rahasia).
+create or replace function public.report_server_stats(p_token text, p_players integer, p_worlds integer)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_hash text;
+begin
+  select token_hash into v_hash from public.server_stats where id;
+
+  if v_hash is null or p_token is null or public.gt_hash_code(p_token) <> v_hash then
+    raise exception 'GT:BAD_TOKEN';
+  end if;
+
+  if p_players is null or p_players < 0 or p_players > 100000
+     or p_worlds is null or p_worlds < 0 or p_worlds > 1000000 then
+    raise exception 'GT:BAD_STATS';
+  end if;
+
+  update public.server_stats
+    set players_online = p_players,
+        active_worlds = p_worlds,
+        peak_players = greatest(peak_players, p_players),
+        reported_at = now()
+    where id;
+
+  return jsonb_build_object('ok', true);
+end $$;
+
+-- --------------------------------------------------
 -- CUSTOMER RPCs
 -- --------------------------------------------------
 
@@ -892,6 +963,36 @@ begin
   return public.get_store_status();
 end $$;
 
+-- Admin → Server: buat token baru (token lama langsung tidak berlaku).
+-- Token asli hanya dikembalikan sekali; database menyimpan hash-nya.
+create or replace function public.admin_rotate_stats_token()
+returns text
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_token text := 'gts_' || public.gt_random_code(32);
+begin
+  perform public.gt_require_admin();
+  insert into public.server_stats (id) values (true) on conflict (id) do nothing;
+  update public.server_stats set token_hash = public.gt_hash_code(v_token) where id;
+  return v_token;
+end $$;
+
+-- Admin → Server: reset rekor peak player.
+create or replace function public.admin_reset_peak()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  perform public.gt_require_admin();
+  update public.server_stats set peak_players = players_online where id;
+  return public.get_server_stats();
+end $$;
+
 -- --------------------------------------------------
 -- FUNCTION PRIVILEGES
 -- --------------------------------------------------
@@ -932,6 +1033,15 @@ grant execute on function public.get_store_status()                   to anon, a
 grant execute on function public.admin_set_maintenance(boolean, text, text) to authenticated;
 revoke all on function public.admin_set_downloads(text, text, text, text) from public, anon;
 grant execute on function public.admin_set_downloads(text, text, text, text) to authenticated;
+
+revoke all on function public.get_server_stats()                      from public;
+revoke all on function public.report_server_stats(text, integer, integer) from public;
+revoke all on function public.admin_rotate_stats_token()              from public, anon;
+revoke all on function public.admin_reset_peak()                      from public, anon;
+grant execute on function public.get_server_stats()                   to anon, authenticated;
+grant execute on function public.report_server_stats(text, integer, integer) to anon, authenticated;
+grant execute on function public.admin_rotate_stats_token()           to authenticated;
+grant execute on function public.admin_reset_peak()                   to authenticated;
 
 -- --------------------------------------------------
 -- STORAGE
