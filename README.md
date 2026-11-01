@@ -12,6 +12,8 @@ Toko item untuk **GTPLAY — Growtopia Private Server**. Frontend tetap HTML, CS
 - **Admin Dashboard** — overview (total order, revenue, pending, completed, produk tersedia), kelola pesanan (search, filter status, detail, lihat bukti bayar, verify / reject / processing / completed / cancel), kelola produk (tambah, edit, hapus, harga, stok, upload gambar, aktif/sembunyikan), rename kategori.
 - **Halaman lain** — How to Buy & Payment Guide, FAQ, About / Terms / Refund Policy, Announcement, Maintenance, 404.
 
+- **Redeem Code** — item dikirim dalam bentuk redeem code. Admin mengisi code (boleh lebih dari satu, satu per baris) saat menandai pesanan *Completed*; pembeli menyalinnya dengan tombol **Copy** di halaman pembayaran & Track Order. Code hanya terlihat oleh pembeli yang memegang Order ID + access code.
+
 Status pesanan: `Pending Payment → Payment Submitted → Payment Verified → Processing → Completed`, plus `Expired`, `Cancelled`, `Rejected`.
 
 ## Dua mode
@@ -112,6 +114,14 @@ Semua di **`js/config.js`**.
 
 > Harga Magplant dipertahankan dari website lama. **Stok 50 di data awal adalah placeholder** — ganti dengan stok asli.
 
+## Redeem code
+
+- Admin → Orders → buka pesanan → **Mark Completed** → isi redeem code → **Save & complete**. Completed tanpa redeem code ditolak server.
+- Code bisa diisi lebih awal (status Verified/Processing) atau diperbaiki setelah Completed lewat kolom **Redeem code → Save redeem code**.
+- Teks petunjuk di bawah code: `REDEEM_HELP` di `js/config.js`.
+
+**Upgrade database yang sudah berjalan:** jalankan ulang seluruh isi `supabase/schema.sql` di SQL Editor. Aman diulang — data, produk, dan admin tidak hilang; kolom `redeem_code` dan fungsi baru akan ditambahkan.
+
 ## Pengumuman
 
 Edit array `announcements` di `js/announcement.js`. `category`: `event`, `update`, atau `maintenance`.
@@ -163,11 +173,23 @@ Edit array `announcements` di `js/announcement.js`. `category`: `event`, `update
 
 ### Mode maintenance
 
-Arahkan semua halaman ke `maintenance.html` dengan menambahkan ini ke `vercel.json` (hapus lagi setelah selesai):
+**Cara utama:** Admin → Overview → kartu **Store status** → isi estimasi waktu & pesan → **Turn on maintenance**. Pengunjung toko dialihkan ke `maintenance.html`, pesanan baru ditolak server, sedangkan Payment & Track Order tetap bisa dibuka untuk pesanan yang sudah ada. Admin yang login tetap bisa melihat toko. Tekan **Open store** untuk membuka kembali — halaman maintenance otomatis kembali ke toko dalam ±30 detik.
+
+**Cara darurat** (mis. Supabase sedang bermasalah) — lewat `vercel.json`:
+
+Tambahkan blok `redirects` ke `vercel.json` (sejajar dengan `"headers"`), lalu commit. Semua halaman toko dialihkan ke `maintenance.html`, sementara `admin.html` tetap bisa dibuka:
 
 ```json
-"rewrites": [{ "source": "/((?!maintenance.html|style.css|favicon.svg).*)", "destination": "/maintenance.html" }]
+"redirects": [
+  {
+    "source": "/((?!maintenance\\.html|admin\\.html|style\\.css|favicon\\.svg|js/|images/).*)",
+    "destination": "/maintenance.html",
+    "permanent": false
+  }
+],
 ```
+
+Untuk membuka toko lagi, hapus blok `redirects` itu dan commit. Teks status / estimasi waktu ada di `maintenance.html`.
 
 ## Catatan
 

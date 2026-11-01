@@ -34,7 +34,7 @@
 
       <h1>WE'LL BE<br /><span>RIGHT BACK</span></h1>
 
-      <p class="maintenance-description">
+      <p class="maintenance-description" id="maintenanceMessage">
         GTPLAY sedang dalam proses maintenance untuk meningkatkan performa
         server dan menambah item baru. Mohon maaf atas ketidaknyamanannya —
         kami akan kembali online sesegera mungkin.
@@ -49,14 +49,14 @@
       <div class="maintenance-info">
         <div class="info-item">
           <span class="info-label">STATUS</span>
-          <span class="info-value">In Progress</span>
+          <span class="info-value" id="maintenanceStatus">In Progress</span>
         </div>
 
         <span class="info-divider"></span>
 
         <div class="info-item">
           <span class="info-label">ESTIMATED TIME</span>
-          <span class="info-value">~2 Hours</span>
+          <span class="info-value" id="maintenanceEta">~2 Hours</span>
         </div>
       </div>
 
@@ -67,6 +67,11 @@
         rel="noopener noreferrer"
       >
         Contact Admin
+        <span class="button-arrow" aria-hidden="true">→</span>
+      </a>
+
+      <a class="maintenance-button maintenance-back" id="maintenanceBack" href="index.html" hidden>
+        Back to Store
         <span class="button-arrow" aria-hidden="true">→</span>
       </a>
 
@@ -83,5 +88,10 @@
 
   </div>
 
+  <script src="js/config.js" defer></script>
+  <script src="js/utils.js" defer></script>
+  <script src="js/products.js" defer></script>
+  <script src="js/api.js" defer></script>
+  <script src="js/maintenance.js" defer></script>
 </body>
 </html>

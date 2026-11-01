@@ -1,4 +1,4 @@
-// GTPLAY v3.1 (redeem code)
+// GTPLAY v3.2 (maintenance toggle)
 // ==================================================
 // GTPLAY DATA LAYER
 // --------------------------------------------------
@@ -53,6 +53,7 @@ GT.api = (function () {
     NOT_SIGNED_IN: "Please sign in.",
     INVALID_TRANSITION: "That status change is not allowed.",
     INVALID_PRODUCT: "Product data is not valid.",
+    MAINTENANCE: "The store is under maintenance. New orders are paused for now.",
     REDEEM_REQUIRED: "Enter the redeem code before marking this order as completed.",
     NETWORK: "Could not reach the server. Check your connection and try again."
   };
@@ -145,6 +146,12 @@ GT.api = (function () {
 
   const demo = (function () {
     const PRODUCTS_KEY = "gtplay:demo:products";
+    const SETTINGS_KEY = "gtplay:demo:settings";
+
+    function loadSettings() {
+      const saved = storage.get(SETTINGS_KEY, null);
+      return { maintenance: false, message: "", eta: "", ...(saved || {}) };
+    }
     const ORDERS_KEY = "gtplay:demo:orders";
 
     function loadProducts() {
@@ -223,11 +230,16 @@ GT.api = (function () {
     return {
       mode: "demo",
 
+      async getStoreStatus() {
+        return loadSettings();
+      },
+
       async listProducts() {
         return loadProducts().filter(p => p.active);
       },
 
       async createOrder({ growId, items }) {
+        if (loadSettings().maintenance) fail("MAINTENANCE");
         const check = validateGrowId(growId);
         if (!check.ok) fail("INVALID_GROWID");
         if (!Array.isArray(items) || items.length === 0) fail("EMPTY_CART");
@@ -440,6 +452,17 @@ GT.api = (function () {
           saveProducts(products);
         },
 
+        async setMaintenance(on, message, eta) {
+          const settings = {
+            maintenance: Boolean(on),
+            message: String(message || "").trim(),
+            eta: String(eta || "").trim(),
+            updatedAt: new Date().toISOString()
+          };
+          storage.set(SETTINGS_KEY, settings);
+          return settings;
+        },
+
         async resetDemo() {
           storage.remove(PRODUCTS_KEY);
           storage.remove(ORDERS_KEY);
@@ -567,6 +590,10 @@ GT.api = (function () {
     return {
       mode: "supabase",
 
+      async getStoreStatus() {
+        return rpc("get_store_status");
+      },
+
       async listProducts() {
         try {
           const sb = await client();
@@ -693,6 +720,14 @@ GT.api = (function () {
             p_status: nextStatus,
             p_note: note || null,
             p_redeem_code: redeemCode || null
+          });
+        },
+
+        async setMaintenance(on, message, eta) {
+          return rpc("admin_set_maintenance", {
+            p_on: Boolean(on),
+            p_message: message || null,
+            p_eta: eta || null
           });
         },
 

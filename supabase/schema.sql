@@ -346,6 +346,42 @@ begin
 end $$;
 
 -- --------------------------------------------------
+-- STORE SETTINGS (maintenance mode)
+-- --------------------------------------------------
+-- Satu baris saja (id selalu true). Diubah lewat tombol
+-- Maintenance di Admin Dashboard.
+
+create table if not exists public.store_settings (
+  id                  boolean primary key default true check (id),
+  maintenance         boolean not null default false,
+  maintenance_message text check (maintenance_message is null or length(maintenance_message) <= 500),
+  maintenance_eta     text check (maintenance_eta is null or length(maintenance_eta) <= 60),
+  updated_at          timestamptz not null default now()
+);
+
+insert into public.store_settings (id) values (true) on conflict (id) do nothing;
+
+alter table public.store_settings enable row level security;
+-- Tanpa policy: dibaca/diubah hanya lewat RPC di bawah.
+
+create or replace function public.get_store_status()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select jsonb_build_object(
+    'maintenance', coalesce(s.maintenance, false),
+    'message', coalesce(s.maintenance_message, ''),
+    'eta', coalesce(s.maintenance_eta, ''),
+    'updatedAt', s.updated_at
+  )
+  from public.store_settings s
+  where s.id;
+$$;
+
+-- --------------------------------------------------
 -- CUSTOMER RPCs
 -- --------------------------------------------------
 
@@ -370,6 +406,11 @@ declare
   v_tries    integer := 0;
 begin
   perform public.expire_stale_orders();
+
+  -- Saat maintenance, pesanan baru ditolak (pesanan lama tetap bisa dibayar).
+  if exists (select 1 from public.store_settings where id and maintenance) then
+    raise exception 'GT:MAINTENANCE';
+  end if;
 
   if v_grow_id !~ '^[A-Za-z0-9_]{3,24}$' then
     raise exception 'GT:INVALID_GROWID';
@@ -718,6 +759,28 @@ begin
   return public.gt_order_json(v_order.id, true);
 end $$;
 
+-- Tombol Maintenance di Admin Dashboard.
+create or replace function public.admin_set_maintenance(p_on boolean, p_message text default null, p_eta text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  perform public.gt_require_admin();
+
+  insert into public.store_settings (id) values (true) on conflict (id) do nothing;
+
+  update public.store_settings
+    set maintenance = coalesce(p_on, false),
+        maintenance_message = nullif(btrim(coalesce(p_message, '')), ''),
+        maintenance_eta = nullif(btrim(coalesce(p_eta, '')), ''),
+        updated_at = now()
+    where id;
+
+  return public.get_store_status();
+end $$;
+
 -- --------------------------------------------------
 -- FUNCTION PRIVILEGES
 -- --------------------------------------------------
@@ -751,6 +814,11 @@ grant execute on function public.admin_list_orders(integer)           to authent
 grant execute on function public.admin_get_order(text)                to authenticated;
 grant execute on function public.admin_update_order_status(text, text, text, text) to authenticated;
 grant execute on function public.admin_set_redeem_code(text, text)    to authenticated;
+
+revoke all on function public.get_store_status()                      from public;
+revoke all on function public.admin_set_maintenance(boolean, text, text) from public, anon;
+grant execute on function public.get_store_status()                   to anon, authenticated;
+grant execute on function public.admin_set_maintenance(boolean, text, text) to authenticated;
 
 -- --------------------------------------------------
 -- STORAGE

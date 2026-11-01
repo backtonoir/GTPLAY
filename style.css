@@ -1,4 +1,4 @@
-/* GTPLAY v3.1 (redeem code) */
+/* GTPLAY v3.2 (maintenance toggle) */
 /* ==================================================
    GTPLAY STORE — DESIGN SYSTEM
    --------------------------------------------------
@@ -3228,4 +3228,49 @@ textarea.input {
 .redeem-editor {
   padding-top: 14px;
   border-top: 1px solid var(--border);
+}
+
+.maintenance-back {
+  background: var(--red);
+  color: #fff;
+}
+
+.maintenance-back[hidden] {
+  display: none;
+}
+
+/* ---------- STORE STATUS CARD ---------- */
+
+.store-card {
+  margin-bottom: 20px;
+}
+
+.store-card.is-maintenance {
+  border-color: rgba(245, 165, 36, 0.5);
+  background: linear-gradient(135deg, rgba(245, 165, 36, 0.08) 0%, transparent 60%), var(--surface);
+}
+
+.store-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.store-card-head .card-title {
+  margin-bottom: 4px;
+}
+
+.store-card-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+  align-items: start;
+  gap: 0 14px;
+}
+
+@media (max-width: 760px) {
+  .store-card-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

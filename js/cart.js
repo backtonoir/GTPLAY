@@ -1,4 +1,4 @@
-// ==================================================
+// GTPLAY v3.2 (maintenance toggle)
 // GTPLAY CART STATE
 // --------------------------------------------------
 // Keranjang disimpan di localStorage HANYA sebagai daftar

@@ -1,4 +1,4 @@
-// ==================================================
+// GTPLAY v3.2 (maintenance toggle)
 // ANNOUNCEMENT DATA
 // --------------------------------------------------
 // Edit / tambah objek di array ini untuk menulis

@@ -1,4 +1,4 @@
-// GTPLAY v3.1 (redeem code)
+// GTPLAY v3.2 (maintenance toggle)
 // ==================================================
 // GTPLAY CHECKOUT PAGE (checkout.html)
 // --------------------------------------------------
@@ -195,6 +195,10 @@
       toast(error.message || "Could not create the order.", "error");
 
       // Stok/harga berubah → muat ulang katalog agar keranjang disesuaikan.
+      if (error.code === "MAINTENANCE") {
+        setTimeout(() => window.location.replace("maintenance.html"), 1500);
+      }
+
       if (["OUT_OF_STOCK", "PRODUCT_UNAVAILABLE"].includes(error.code)) {
         await GT.layout.loadCatalog(true).catch(() => {});
       }

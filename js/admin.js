@@ -1,4 +1,4 @@
-// GTPLAY v3.1 (redeem code)
+// GTPLAY v3.2 (maintenance toggle)
 // ==================================================
 // GTPLAY ADMIN DASHBOARD (admin.html)
 // --------------------------------------------------
@@ -125,9 +125,14 @@
   // ------------------------------------------------
 
   async function loadData() {
-    const [orders, products] = await Promise.all([admin.listOrders(), admin.listProducts()]);
+    const [orders, products, storeStatus] = await Promise.all([
+      admin.listOrders(),
+      admin.listProducts(),
+      GT.api.getStoreStatus().catch(() => null)
+    ]);
     state.orders = orders;
     state.products = products;
+    state.storeStatus = storeStatus;
   }
 
   function stats() {
@@ -282,6 +287,7 @@
     const toProcess = state.orders.filter(o => ["payment_verified", "processing"].includes(o.status));
 
     panel.replaceChildren(
+      maintenanceCard(),
       h("div", { class: "stat-grid" },
         statCard("Total Orders", s.total),
         statCard("Total Revenue", formatRupiah(s.revenue), "Verified, processing & completed"),
@@ -293,6 +299,97 @@
         orderListCard("Needs verification", attention, "No payments waiting for verification."),
         orderListCard("Ready to deliver", toProcess, "Nothing to deliver right now.")
       )
+    );
+  }
+
+  // ------------------------------------------------
+  // MAINTENANCE TOGGLE
+  // ------------------------------------------------
+
+  function maintenanceCard() {
+    const status = state.storeStatus;
+
+    if (!status) {
+      return h("div", { class: "notice notice-warn store-card" },
+        h("p", {}, "Couldn't read the store status. If you just updated the website, run the latest supabase/schema.sql in Supabase SQL Editor."));
+    }
+
+    const on = Boolean(status.maintenance);
+
+    const eta = h("input", {
+      class: "input",
+      id: "maintEta",
+      maxlength: "60",
+      placeholder: "e.g. ~30 menit"
+    });
+    eta.value = status.eta || "";
+
+    const message = h("textarea", {
+      class: "input",
+      id: "maintMessage",
+      rows: "2",
+      maxlength: "500",
+      placeholder: "Leave empty to use the default maintenance text."
+    });
+    message.value = status.message || "";
+
+    async function save(nextOn, button, successText) {
+      button.disabled = true;
+      try {
+        state.storeStatus = await admin.setMaintenance(nextOn, message.value, eta.value);
+        toast(successText, "success");
+        renderDashboard();
+      } catch (error) {
+        toast(error.message, "error");
+        button.disabled = false;
+      }
+    }
+
+    const toggle = h("button", {
+      type: "button",
+      class: on ? "btn btn-light" : "btn btn-primary",
+      onclick: async event => {
+        const button = event.currentTarget;
+        if (!on) {
+          const ok = await confirmDialog({
+            title: "Turn on maintenance?",
+            message: "Customers will see the maintenance page and new orders are paused. Existing orders can still be paid and tracked.",
+            confirmLabel: "Turn on maintenance"
+          });
+          if (!ok) return;
+          save(true, button, "Maintenance mode is ON.");
+        } else {
+          save(false, button, "Store is open again.");
+        }
+      }
+    }, on ? "Open store" : "Turn on maintenance");
+
+    const saveText = on ? h("button", {
+      type: "button",
+      class: "btn btn-outline",
+      onclick: event => save(true, event.currentTarget, "Maintenance message updated.")
+    }, "Save message") : null;
+
+    return h("section", { class: `card store-card${on ? " is-maintenance" : ""}`, "aria-labelledby": "storeStatusTitle" },
+      h("div", { class: "store-card-head" },
+        h("div", {},
+          h("h2", { class: "card-title", id: "storeStatusTitle" }, "Store status"),
+          h("p", { class: "help" }, on
+            ? "Customers see the maintenance page. New orders are blocked by the server."
+            : "The store is open and accepting orders.")
+        ),
+        h("span", { class: `status-badge ${on ? "tone-warn" : "tone-ok"}` }, on ? "Maintenance" : "Open")
+      ),
+      h("div", { class: "store-card-fields" },
+        h("div", { class: "field" }, h("label", { class: "label", for: "maintEta" }, "Estimated time"), eta),
+        h("div", { class: "field" }, h("label", { class: "label", for: "maintMessage" }, "Message for customers"), message)
+      ),
+      h("div", { class: "modal-actions start no-margin" }, toggle, saveText, h("a", {
+        class: "btn btn-ghost",
+        href: "maintenance.html",
+        target: "_blank",
+        rel: "noopener"
+      }, "Preview page"))
     );
   }
 

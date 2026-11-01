@@ -1,4 +1,4 @@
-// ==================================================
+// GTPLAY v3.2 (maintenance toggle)
 // GTPLAY SHARED LAYOUT
 // --------------------------------------------------
 // Dipakai semua halaman toko:
@@ -299,7 +299,58 @@ GT.layout = (function () {
     });
   }
 
+  // ------------------------------------------------
+  // MAINTENANCE GUARD
+  // --------------------------------------------------
+  // Jika admin menyalakan Maintenance di dashboard, pengunjung
+  // dialihkan ke maintenance.html. Pembeli yang sudah punya
+  // pesanan tetap bisa membuka Payment & Track Order. Admin
+  // yang sedang login tetap bisa melihat toko (preview).
+  // Pesanan baru juga ditolak oleh server (GT:MAINTENANCE).
+  // ------------------------------------------------
+
+  const MAINTENANCE_EXEMPT = ["payment.html", "track.html"];
+
+  function maintenanceBanner(text) {
+    if (document.getElementById("maintenanceBanner")) return;
+    document.body.prepend(h("div", { class: "mode-banner", id: "maintenanceBanner", role: "status" }, text));
+  }
+
+  async function maintenanceGuard() {
+    let status = null;
+    try {
+      status = await GT.api.getStoreStatus();
+    } catch (error) {
+      return; // Gagal cek status → toko tetap tampil seperti biasa.
+    }
+    if (!status || !status.maintenance) return;
+
+    const page = (window.location.pathname.split("/").pop() || "index.html").toLowerCase();
+
+    let isAdmin = false;
+    if (GT.api.admin && GT.api.admin.requiresAuth) {
+      try {
+        isAdmin = Boolean(await GT.api.admin.getSession());
+      } catch (error) {
+        isAdmin = false;
+      }
+    }
+
+    if (isAdmin) {
+      maintenanceBanner("Maintenance mode is ON — customers see the maintenance page. You're viewing as admin.");
+      return;
+    }
+
+    if (MAINTENANCE_EXEMPT.includes(page)) {
+      maintenanceBanner("The store is under maintenance. You can still finish payment or track an existing order.");
+      return;
+    }
+
+    window.location.replace("maintenance.html");
+  }
+
   function init(options) {
+    maintenanceGuard();
     initNav();
     renderSocial();
     const year = $("#year");
