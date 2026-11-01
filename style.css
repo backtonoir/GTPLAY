@@ -1,3 +1,4 @@
+/* GTPLAY v3.1 (redeem code) */
 /* ==================================================
    GTPLAY STORE — DESIGN SYSTEM
    --------------------------------------------------
@@ -3160,4 +3161,71 @@ textarea.input {
 
 .pay-actions + .help {
   margin-top: 12px;
+}
+
+/* ---------- REDEEM CODE ---------- */
+
+.redeem-card {
+  position: relative;
+  padding: 18px;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(229, 23, 47, 0.16) 0%, rgba(229, 23, 47, 0) 60%),
+    var(--surface-2);
+  border: 1px solid rgba(229, 23, 47, 0.45);
+  margin-top: 14px;
+}
+
+.redeem-head h3 {
+  font-size: 18px;
+  margin-bottom: 12px;
+}
+
+.redeem-head .eyebrow {
+  margin-bottom: 6px;
+}
+
+.redeem-list {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.redeem-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  background: var(--bg);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.redeem-code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(14px, 2.4vw, 17px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.redeem-copy {
+  flex-shrink: 0;
+}
+
+.redeem-copy-all {
+  margin-top: 8px;
+}
+
+.redeem-help {
+  margin-top: 10px;
+}
+
+.redeem-editor {
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
 }
