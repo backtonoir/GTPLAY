@@ -24,8 +24,6 @@ GT.i18nPairs = [
   ["Store", "Toko"],
   ["How to Buy", "Cara Beli"],
   ["How To", "Panduan"],
-  ["Changelog", "Riwayat Perubahan"],
-  ["Blacklist", "Daftar Hitam"],
   ["FAQ", "FAQ"],
   ["Track Order", "Lacak Pesanan"],
   ["Announcement", "Pengumuman"],
