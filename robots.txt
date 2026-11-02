@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /checkout
+Disallow: /payment
+Disallow: /maintenance
+Disallow: /api/
+
+Sitemap: https://gtplay.vercel.app/sitemap.xml
