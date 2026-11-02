@@ -204,72 +204,89 @@
     </section>
 
     <!-- ===== HOW TO LOGIN ===== -->
+    <!-- IP server & semua link di bagian ini diatur dari js/config.js → LOGIN_GUIDE.
+         Teks/link di HTML ini hanya cadangan kalau JavaScript gagal dimuat. -->
     <section class="section" id="how-to-login" aria-labelledby="loginTitle">
       <div class="container">
         <div class="section-head">
           <div>
             <p class="eyebrow">Login ke server</p>
             <h2 id="loginTitle">Cara Login per Platform</h2>
-            <p>Panduan login untuk setiap platform yang didukung GTPLAY.</p>
+            <p>Pilih cara yang sesuai dengan perangkat kamu.</p>
           </div>
         </div>
 
-        <div class="prose">
-          <section>
-            <h3>🖥️ Windows</h3>
+        <div class="guide login-guide">
+          <div class="guide-card">
+            <h3 class="login-title"><img class="login-icon" src="/favicon.svg" alt="" aria-hidden="true" width="28" height="28" /><span>GTPLAY Mobile APK</span></h3>
             <ol>
-              <li>Download client GTPLAY untuk Windows dari halaman <a href="/#download">Download</a>.</li>
-              <li>Extract file ZIP ke folder yang kamu inginkan (misalnya <code>C:\GTPLAY</code>).</li>
-              <li>Buka file <strong>Growtopia.exe</strong> dari folder hasil extract.</li>
-              <li>Di layar login, masukkan <strong>GrowID</strong> dan <strong>Password</strong> kamu.</li>
-              <li>Tekan <strong>Login</strong> untuk masuk ke server GTPLAY.</li>
+              <li>Uninstall Real Growtopia if you have it.</li>
+              <li>Restart your device (optional but recommended).</li>
+              <li>Install <a class="login-link" data-login-link="gtplayApk" href="#" target="_blank" rel="noopener noreferrer">GTPLAY APK</a>.</li>
+              <li>Open GTPLAY APK and log in with your GTPLAY account.</li>
             </ol>
-            <div class="notice notice-warn">
-              <strong>Tips:</strong> Jika muncul peringatan Windows Defender atau SmartScreen, pilih <em>Run Anyway</em> / <em>More Info → Run Anyway</em>. Client GTPLAY aman digunakan.
-            </div>
-          </section>
-
-          <section>
-            <h3>📱 Android</h3>
+          </div>
+          <div class="guide-card">
+            <h3 class="login-title"><img class="login-icon" src="/favicon.svg" alt="" aria-hidden="true" width="28" height="28" /><span>GTPLAY Windows Installer</span></h3>
             <ol>
-              <li>Download file APK GTPLAY dari halaman <a href="/#download">Download</a>.</li>
-              <li>Jika belum mengizinkan instalasi dari sumber tidak dikenal, buka <em>Settings → Security → Unknown Sources</em> dan aktifkan.</li>
-              <li>Buka file APK yang sudah didownload dan tekan <strong>Install</strong>.</li>
-              <li>Setelah terinstall, buka aplikasi GTPLAY.</li>
-              <li>Masukkan <strong>GrowID</strong> dan <strong>Password</strong> di layar login, lalu tekan <strong>Login</strong>.</li>
+              <li>Uninstall Real Growtopia if you have it.</li>
+              <li>Install <a class="login-link" data-login-link="gtplayInstaller" href="#" target="_blank" rel="noopener noreferrer">GTPLAY Installer</a>.</li>
+              <li>Open GTPLAY Installer and log in with your GTPLAY account.</li>
+              <li>Wait until installing succeeds, then log in with your GTPLAY account.</li>
             </ol>
-            <div class="notice notice-info">
-              <strong>Catatan:</strong> Pastikan kamu mendownload APK dari link resmi GTPLAY, bukan dari sumber lain, untuk keamanan akun.
-            </div>
-          </section>
-
-          <section>
-            <h3>🍎 iOS</h3>
+          </div>
+          <div class="guide-card">
+            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#0078d4" d="M2 4.5 10 3.4v7.7H2zM11 3.3 22 1.8v9.3H11zM2 12h8v7.7l-8-1.1zM11 12h11v9.3l-11-1.5z"/></svg><span>Windows</span></h3>
             <ol>
-              <li>Download client GTPLAY untuk iOS dari halaman <a href="/#download">Download</a> (jika tersedia).</li>
-              <li>Ikuti instruksi instalasi yang diberikan &mdash; mungkin memerlukan sideloading menggunakan AltStore atau metode serupa.</li>
-              <li>Setelah terinstall, buka aplikasi GTPLAY.</li>
-              <li>Masukkan <strong>GrowID</strong> dan <strong>Password</strong> di layar login.</li>
-              <li>Tekan <strong>Login</strong> untuk masuk.</li>
+              <li>Press <kbd>Win</kbd>+<kbd>R</kbd> → paste <code>C:\Windows\System32\drivers\etc</code></li>
+              <li>Open <strong>hosts</strong> with Notepad (Admin).</li>
+              <li>Add:<br /><code><span data-login-ip>103.126.117.167</span> www.growtopia1.com</code><br /><code><span data-login-ip>103.126.117.167</span> www.growtopia2.com</code></li>
+              <li>Save → launch Growtopia.</li>
             </ol>
-            <div class="notice notice-warn">
-              <strong>Perhatian:</strong> Dukungan iOS mungkin terbatas dan memerlukan langkah tambahan. Hubungi admin jika mengalami kendala saat instalasi.
-            </div>
-          </section>
-
-          <section>
-            <h3>💻 Mac</h3>
+          </div>
+          <div class="guide-card">
+            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#3ddc84" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.08c-1.76 0-3.42.38-4.92 1.06L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg><span>PowerTunnel (Android)</span></h3>
             <ol>
-              <li>Download client GTPLAY untuk Mac dari halaman <a href="/#download">Download</a>.</li>
-              <li>Buka file yang sudah didownload dan pindahkan aplikasi ke folder <strong>Applications</strong>.</li>
-              <li>Klik kanan aplikasi GTPLAY dan pilih <strong>Open</strong> (untuk bypass Gatekeeper saat pertama kali).</li>
-              <li>Masukkan <strong>GrowID</strong> dan <strong>Password</strong> di layar login.</li>
-              <li>Tekan <strong>Login</strong> untuk masuk ke server.</li>
+              <li>Install <a class="login-link" data-login-link="powerTunnel" href="#" target="_blank" rel="noopener noreferrer">PowerTunnel APK</a>.</li>
+              <li>Open → Plugin → Hosts → Open the Setting.</li>
+              <li>Enter: <code data-login-text="androidHostsUrl">https://growtopia.id/android</code></li>
+              <li>Back, click <strong>CONNECT</strong>, open Growtopia.</li>
             </ol>
-          </section>
-
-          <div class="notice notice-info">
-            <strong>Belum punya akun?</strong> Masukkan GrowID dan password baru yang kamu inginkan di layar login, lalu tekan tombol <em>Register</em>. Akun langsung aktif dan bisa digunakan.
+          </div>
+          <div class="guide-card">
+            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#3ddc84" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.08c-1.76 0-3.42.38-4.92 1.06L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg><span>Hosts Go (Android)</span></h3>
+            <ol>
+              <li>Install <a class="login-link" data-login-link="hostsGo" href="#" target="_blank" rel="noopener noreferrer">Hosts Go (No Root)</a>.</li>
+              <li>Open → Hosts Editor → enable → Download Hosts File.</li>
+              <li>Enter: <code data-login-text="androidHostsUrl">https://growtopia.id/android</code></li>
+              <li>Apply, start protection, open Growtopia.</li>
+            </ol>
+          </div>
+          <div class="guide-card">
+            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#3ddc84" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.08c-1.76 0-3.42.38-4.92 1.06L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg><span>Virtual Host (Android)</span></h3>
+            <ol>
+              <li>Install <a class="login-link" data-login-link="virtualHost" href="#" target="_blank" rel="noopener noreferrer">Virtual Host APK</a>.</li>
+              <li>Download Hosts File <a class="login-link" data-login-link="hostsFile" href="#" target="_blank" rel="noopener noreferrer">here</a>.</li>
+              <li>Open → SELECT HOSTS FILE.</li>
+              <li>Select the downloaded host file (<code data-login-text="hostsFileName">GTPLAY-HOST.txt</code>).</li>
+              <li>Open Growtopia.</li>
+            </ol>
+          </div>
+          <div class="guide-card">
+            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#a1a1aa" d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.8 1.2 1.8 2.6 3.2 2.5 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.7-1-2.7-4ZM13.9 5c.7-.9 1.2-2.1 1.1-3.3-1 0-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.2 1.1.1 2.3-.6 3-1.5Z"/></svg><span>Mac</span></h3>
+            <ol>
+              <li>Finder → Go → Go to Folder → <code>/private/etc/hosts</code></li>
+              <li>Copy to Desktop, edit, then add:<br /><code><span data-login-ip>103.126.117.167</span> www.growtopia1.com</code><br /><code><span data-login-ip>103.126.117.167</span> www.growtopia2.com</code></li>
+              <li>Save and move back → start Growtopia.</li>
+            </ol>
+          </div>
+          <div class="guide-card">
+            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="1.5" width="12" height="21" rx="2.5" fill="none" stroke="#3b9bff" stroke-width="2"/><path d="M10.5 19h3" stroke="#3b9bff" stroke-width="2" stroke-linecap="round"/></svg><span>Surge5 (iPhone)</span></h3>
+            <ol>
+              <li>Install <a class="login-link" data-login-link="surge5" href="#" target="_blank" rel="noopener noreferrer">Surge5</a>.</li>
+              <li>Import Profile: <code data-login-text="iosProfileUrl">https://growtopia.id/ios</code></li>
+              <li>Allow VPN Configuration → Connect → Open Growtopia.</li>
+            </ol>
           </div>
         </div>
       </div>
@@ -440,10 +457,6 @@
   <script src="js/api.js" defer></script>
   <script src="js/cart.js" defer></script>
   <script src="js/layout.js" defer></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      GT.layout.init({ page: "howto" });
-    });
-  </script>
+  <script src="js/howto.js" defer></script>
 </body>
 </html>

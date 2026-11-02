@@ -63,6 +63,32 @@ GT.config = Object.freeze({
   },
 
   // ------------------------------------------------
+  // CARA LOGIN (halaman /howto → "Cara Login per Platform")
+  // ------------------------------------------------
+  // Ubah IP server & link di sini saja — semua kartu login
+  // di halaman How To ikut berubah otomatis.
+  //   • Link kosong ("") → tulisan tetap tampil tapi tidak bisa diklik.
+  //   • gtplayApk / gtplayInstaller kosong → otomatis memakai link
+  //     Android / Windows dari Admin → Downloads.
+  LOGIN_GUIDE: {
+    serverIp: "103.126.117.167",                  // IP untuk file hosts (Windows & Mac)
+
+    // Link tombol download
+    gtplayApk: "",                                // GTPLAY APK (Android)
+    gtplayInstaller: "",                          // GTPLAY Installer (Windows)
+    powerTunnel: "",                              // PowerTunnel APK
+    hostsGo: "",                                  // Hosts Go (No Root)
+    virtualHost: "",                              // Virtual Host APK
+    hostsFile: "",                                // file hosts untuk Virtual Host
+    surge5: "",                                   // Surge5 (App Store)
+
+    // Teks yang player salin/ketik
+    androidHostsUrl: "https://growtopia.id/android",  // PowerTunnel & Hosts Go
+    iosProfileUrl: "https://growtopia.id/ios",        // profil Surge5
+    hostsFileName: "GTPLAY-HOST.txt"                  // nama file hosts Virtual Host
+  },
+
+  // ------------------------------------------------
   // STATUS SERVER (landing page)
   // ------------------------------------------------
   // "/api/server-status" = Vercel function (folder api/) yang membaca

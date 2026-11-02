@@ -4190,3 +4190,50 @@ textarea.input {
   height: 16px;
   flex-shrink: 0;
 }
+
+/* ================================================
+   HOW TO — Cara Login per Platform
+   ================================================ */
+.login-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--red);
+}
+
+.login-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.login-guide .guide-card li {
+  overflow-wrap: anywhere;
+}
+
+.login-guide code {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.login-guide kbd {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.login-link {
+  color: var(--red);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.login-link.is-disabled {
+  color: var(--text-3);
+  text-decoration: none;
+  cursor: not-allowed;
+}
