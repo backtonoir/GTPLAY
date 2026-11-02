@@ -78,11 +78,11 @@
   applyLinks({});
   bindCopyButtons();
 
-  // GTPLAY APK / Installer kosong di config → pakai link dari Admin → Downloads.
+  // GTPLAY APK kosong di config → pakai link Android dari Admin → Downloads.
   GT.api.getStoreStatus()
     .then(status => {
       const downloads = (status && status.downloads) || {};
-      applyLinks({ gtplayApk: downloads.android, gtplayInstaller: downloads.windows });
+      applyLinks({ gtplayApk: downloads.android });
     })
     .catch(() => {});
 

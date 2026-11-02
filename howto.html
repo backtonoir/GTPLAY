@@ -228,13 +228,32 @@
             </ol>
             <p class="login-note login-note-warn">Growtopia has closed direct access to private servers, so GTPLAY APK still needs PowerTunnel, Hosts Go, or Virtual Host to connect.</p>
           </div>
-          <div class="guide-card">
-            <h3 class="login-title"><img class="login-icon" src="/favicon.svg" alt="" aria-hidden="true" width="28" height="28" /><span>GTPLAY Windows Installer</span></h3>
+          <div class="guide-card" id="login-powertunnel">
+            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#3ddc84" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.08c-1.76 0-3.42.38-4.92 1.06L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg><span>PowerTunnel (Android)</span></h3>
             <ol>
-              <li>Uninstall Real Growtopia if you have it.</li>
-              <li>Install <a class="login-link" data-login-link="gtplayInstaller" href="#" target="_blank" rel="noopener noreferrer">GTPLAY Installer</a>.</li>
-              <li>Open GTPLAY Installer and log in with your GTPLAY account.</li>
-              <li>Wait until installing succeeds, then log in with your GTPLAY account.</li>
+              <li>Install <a class="login-link" data-login-link="powerTunnel" href="#" target="_blank" rel="noopener noreferrer">PowerTunnel APK</a>.</li>
+              <li>Open → Plugin → Hosts → Open the Setting.</li>
+              <li>Enter: <code data-login-text="androidHostsUrl">https://growtopia.id/android</code></li>
+              <li>Back, click <strong>CONNECT</strong>, then open GTPLAY APK or Growtopia.</li>
+            </ol>
+          </div>
+          <div class="guide-card" id="login-hostsgo">
+            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#3ddc84" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.08c-1.76 0-3.42.38-4.92 1.06L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg><span>Hosts Go (Android)</span></h3>
+            <ol>
+              <li>Install <a class="login-link" data-login-link="hostsGo" href="#" target="_blank" rel="noopener noreferrer">Hosts Go (No Root)</a>.</li>
+              <li>Open → Hosts Editor → enable → Download Hosts File.</li>
+              <li>Enter: <code data-login-text="androidHostsUrl">https://growtopia.id/android</code></li>
+              <li>Apply, start protection, then open GTPLAY APK or Growtopia.</li>
+            </ol>
+          </div>
+          <div class="guide-card" id="login-virtualhost">
+            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#3ddc84" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.08c-1.76 0-3.42.38-4.92 1.06L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg><span>Virtual Host (Android)</span></h3>
+            <ol>
+              <li>Install <a class="login-link" data-login-link="virtualHost" href="#" target="_blank" rel="noopener noreferrer">Virtual Host APK</a>.</li>
+              <li>Download Hosts File <a class="login-link" data-login-link="hostsFile" href="#" target="_blank" rel="noopener noreferrer">here</a>.</li>
+              <li>Open → SELECT HOSTS FILE.</li>
+              <li>Select the downloaded host file (<code data-login-text="hostsFileName">GTPLAY-HOST.txt</code>).</li>
+              <li>Open GTPLAY APK or Growtopia.</li>
             </ol>
           </div>
           <div class="guide-card guide-card-wide" id="login-windows">
@@ -266,34 +285,6 @@
               <li><strong>Open hosts file</strong> — go to File → Open and navigate to:<br /><code class="login-path">C:\Windows\System32\drivers\etc\hosts</code></li>
               <li><strong>Add entries</strong> — click <strong>Copy Hosts</strong>, paste the entries at the bottom of the file, then save (<kbd>Ctrl</kbd>+<kbd>S</kbd>):<br /><code><span data-login-ip>103.126.117.167</span> www.growtopia1.com</code><br /><code><span data-login-ip>103.126.117.167</span> www.growtopia2.com</code><br /><button type="button" class="btn btn-outline btn-sm login-copy" data-copy-hosts>Copy Hosts</button></li>
               <li><strong>Launch Growtopia</strong> — open Growtopia and click Play.</li>
-            </ol>
-          </div>
-          <div class="guide-card" id="login-powertunnel">
-            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#3ddc84" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.08c-1.76 0-3.42.38-4.92 1.06L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg><span>PowerTunnel (Android)</span></h3>
-            <ol>
-              <li>Install <a class="login-link" data-login-link="powerTunnel" href="#" target="_blank" rel="noopener noreferrer">PowerTunnel APK</a>.</li>
-              <li>Open → Plugin → Hosts → Open the Setting.</li>
-              <li>Enter: <code data-login-text="androidHostsUrl">https://growtopia.id/android</code></li>
-              <li>Back, click <strong>CONNECT</strong>, then open GTPLAY APK or Growtopia.</li>
-            </ol>
-          </div>
-          <div class="guide-card" id="login-hostsgo">
-            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#3ddc84" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.08c-1.76 0-3.42.38-4.92 1.06L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg><span>Hosts Go (Android)</span></h3>
-            <ol>
-              <li>Install <a class="login-link" data-login-link="hostsGo" href="#" target="_blank" rel="noopener noreferrer">Hosts Go (No Root)</a>.</li>
-              <li>Open → Hosts Editor → enable → Download Hosts File.</li>
-              <li>Enter: <code data-login-text="androidHostsUrl">https://growtopia.id/android</code></li>
-              <li>Apply, start protection, then open GTPLAY APK or Growtopia.</li>
-            </ol>
-          </div>
-          <div class="guide-card" id="login-virtualhost">
-            <h3 class="login-title"><svg class="login-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="#3ddc84" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.08c-1.76 0-3.42.38-4.92 1.06L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z"/></svg><span>Virtual Host (Android)</span></h3>
-            <ol>
-              <li>Install <a class="login-link" data-login-link="virtualHost" href="#" target="_blank" rel="noopener noreferrer">Virtual Host APK</a>.</li>
-              <li>Download Hosts File <a class="login-link" data-login-link="hostsFile" href="#" target="_blank" rel="noopener noreferrer">here</a>.</li>
-              <li>Open → SELECT HOSTS FILE.</li>
-              <li>Select the downloaded host file (<code data-login-text="hostsFileName">GTPLAY-HOST.txt</code>).</li>
-              <li>Open GTPLAY APK or Growtopia.</li>
             </ol>
           </div>
           <div class="guide-card">

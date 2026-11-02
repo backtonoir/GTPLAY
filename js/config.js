@@ -68,15 +68,14 @@ GT.config = Object.freeze({
   // Ubah IP server & link di sini saja — semua kartu login
   // di halaman How To ikut berubah otomatis.
   //   • Link kosong ("") → tulisan tetap tampil tapi tidak bisa diklik.
-  //   • gtplayApk / gtplayInstaller kosong → otomatis memakai link
-  //     Android / Windows dari Admin → Downloads.
+  //   • gtplayApk kosong → otomatis memakai link Android
+  //     dari Admin → Downloads.
   LOGIN_GUIDE: {
     serverIp: "103.126.117.167",                  // IP untuk file hosts (Windows & Mac)
     certificateUrl: "",                           // link sertifikat GTPS Cloud (Windows, Growtopia v5.59+)
 
     // Link tombol download
     gtplayApk: "",                                // GTPLAY APK (Android)
-    gtplayInstaller: "",                          // GTPLAY Installer (Windows)
     powerTunnel: "",                              // PowerTunnel APK
     hostsGo: "",                                  // Hosts Go (No Root)
     virtualHost: "",                              // Virtual Host APK
