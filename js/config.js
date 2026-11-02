@@ -71,7 +71,10 @@ GT.config = Object.freeze({
   //   • gtplayApk kosong → otomatis memakai link Android
   //     dari Admin → Downloads.
   LOGIN_GUIDE: {
-    serverIp: "https://dash.gtps.cloud/ios/6986",                  // IP untuk file hosts (Windows & Mac)
+    serverIp: "5.39.13.24 growtopia1.com
+5.39.13.24 growtopia2.com
+5.39.13.24 www.growtopia1.com
+5.39.13.24 www.growtopia2.com",                  // IP untuk file hosts (Windows & Mac)
     certificateUrl: "https://dash.gtps.cloud/gtps-root-ca.crt",                           // link sertifikat GTPS Cloud (Windows, Growtopia v5.59+)
 
     // Link tombol download
