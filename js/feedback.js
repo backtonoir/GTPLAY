@@ -35,8 +35,8 @@
     kindGroup.querySelectorAll("[data-kind]").forEach(button => {
       button.setAttribute("aria-pressed", String(button.dataset.kind === kind));
     });
-    messageLabel.textContent = COPY[kind].label;
-    messageInput.placeholder = COPY[kind].placeholder;
+    messageLabel.textContent = GT.t(COPY[kind].label);
+    messageInput.placeholder = GT.t(COPY[kind].placeholder);
   }
 
   function updateCount() {
@@ -70,7 +70,7 @@
     }
 
     submit.disabled = true;
-    submit.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), " Mengirim…");
+    submit.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), " " + GT.t("Mengirim…"));
 
     try {
       await GT.api.submitFeedback(kind, grow.value, message);
@@ -79,16 +79,16 @@
       updateCount();
       result.replaceChildren(
         h("div", { class: "notice notice-ok" },
-          h("p", {}, h("strong", {}, "Terima kasih! "),
+          h("p", {}, h("strong", {}, "Terima kasih!"), " ",
             kind === "bug" ? "Laporan bug kamu sudah terkirim ke admin." : "Saran kamu sudah terkirim ke admin.")
         )
       );
-      toast("Feedback terkirim.", "success");
+      toast(GT.t("Feedback terkirim."), "success");
     } catch (error) {
       errorText.textContent = error.message;
     } finally {
       submit.disabled = false;
-      submit.textContent = "Kirim";
+      submit.textContent = GT.t("Kirim");
     }
   });
 

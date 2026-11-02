@@ -72,7 +72,7 @@ window.GT = window.GT || {};
   // ------------------------------------------------
 
   const SKIP = new Set(["SCRIPT", "STYLE", "SVG", "svg", "TEXTAREA", "CODE"]);
-  const INLINE = new Set(["A", "STRONG", "EM", "SPAN", "BR", "B", "I", "SMALL", "TIME", "S"]);
+  const INLINE = new Set(["A", "STRONG", "EM", "SPAN", "BR", "B", "I", "SMALL", "TIME", "S", "CODE", "KBD"]);
   const ATTRS = ["placeholder", "aria-label", "title", "alt"];
 
   function inlineOnly(el) {

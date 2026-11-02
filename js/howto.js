@@ -62,7 +62,7 @@
       } else {
         link.removeAttribute("href");
         link.setAttribute("aria-disabled", "true");
-        link.title = "Link belum tersedia";
+        link.title = GT.t("Link belum tersedia");
         link.classList.add("is-disabled");
       }
     });
@@ -70,21 +70,21 @@
     $all("[data-copy-login]").forEach(button => {
       const available = Boolean(linkFor(button.dataset.copyLogin));
       button.disabled = !available;
-      button.title = available ? "" : "Link belum tersedia";
+      button.title = available ? "" : GT.t("Link belum tersedia");
     });
   }
 
   async function copy(button, value, label) {
     if (!value) {
-      toast(`${label} belum tersedia.`, "error");
+      toast(GT.t("{label} belum tersedia.", { label: GT.t(label) }), "error");
       return;
     }
     const ok = await GT.utils.copyText(value);
     if (!ok) {
-      toast(`Gagal menyalin ${label}. Salin manual.`, "error");
+      toast(GT.t("Gagal menyalin {label}. Salin manual.", { label: GT.t(label) }), "error");
       return;
     }
-    toast(`${label} disalin.`, "success");
+    toast(GT.t("{label} disalin.", { label: GT.t(label) }), "success");
     const original = button.textContent;
     button.textContent = "Copied ✓";
     setTimeout(() => { button.textContent = original; }, 1500);
