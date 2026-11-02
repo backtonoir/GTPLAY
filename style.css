@@ -368,12 +368,21 @@ h4 {
   flex-shrink: 0;
 }
 
-.brand-mark {
+.brand-logo {
   display: block;
-  width: 34px;
-  height: 34px;
+  height: 54px;
+  width: auto;
   flex-shrink: 0;
-  image-rendering: pixelated;
+}
+
+.site-footer .brand-logo {
+  height: 76px;
+}
+
+@media (max-width: 600px) {
+  .brand-logo {
+    height: 44px;
+  }
 }
 
 .brand-name span {
