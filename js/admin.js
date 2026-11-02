@@ -1522,92 +1522,8 @@
   }
 
   // ------------------------------------------------
-  // SERVER (status GTPS Cloud + Lua opsional)
+  // SERVER (status GTPS Cloud)
   // ------------------------------------------------
-
-  function luaScript(token) {
-    return [
-      "-- ==================================================",
-      "-- GTPLAY Website Stats Reporter",
-      "-- Mengirim jumlah player online & world aktif ke website",
-      "-- setiap ±60 detik (onAutoSaveRequest).",
-      "-- ==================================================",
-      "",
-      `local SUPABASE_URL = "${GT.config.SUPABASE_URL.trim().replace(/\/+$/, "")}"`,
-      `local ANON_KEY = "${GT.config.SUPABASE_ANON_KEY.trim()}" -- public key (sama dengan website)`,
-      `local STATS_TOKEN = "${token}" -- RAHASIA: jangan dibagikan`,
-      "",
-      "-- Panggil fungsi engine dengan aman (tidak error jika tidak ada).",
-      "local function tryList(fn)",
-      "  if type(fn) ~= \"function\" then return nil end",
-      "  local ok, result = pcall(fn)",
-      "  if ok and type(result) == \"table\" then return result end",
-      "  return nil",
-      "end",
-      "",
-      "local function getPlayers()",
-      "  return tryList(getServerPlayers) or tryList(getAllPlayers) or {}",
-      "end",
-      "",
-      "local function worldNameOf(player)",
-      "  local ok, name = pcall(function() return player:getWorldName() end)",
-      "  if ok and type(name) == \"string\" then return name end",
-      "  ok, name = pcall(function() local w = player:getWorld(); return w and w:getName() end)",
-      "  if ok and type(name) == \"string\" then return name end",
-      "  return nil",
-      "end",
-      "",
-      "-- World aktif: daftar world dari engine jika tersedia,",
-      "-- jika tidak, hitung world unik yang sedang dimasuki player.",
-      "local function countWorlds(players)",
-      "  local list = tryList(getWorlds) or tryList(getActiveWorlds) or tryList(getAllWorlds) or tryList(getLoadedWorlds)",
-      "  if list then return #list end",
-      "",
-      "  local seen, count, readable = {}, 0, false",
-      "  for _, player in ipairs(players) do",
-      "    local name = worldNameOf(player)",
-      "    if name ~= nil then readable = true end",
-      "    if name and name ~= \"\" and name ~= \"EXIT\" and not seen[name] then",
-      "      seen[name] = true",
-      "      count = count + 1",
-      "    end",
-      "  end",
-      "  if readable or #players == 0 then return count end",
-      "  return nil -- tidak bisa dihitung di engine ini",
-      "end",
-      "",
-      "local function reportStats()",
-      "  local players = getPlayers()",
-      "  local payload = { p_token = STATS_TOKEN, p_players = #players }",
-      "  local worlds = countWorlds(players)",
-      "  if worlds ~= nil then payload.p_worlds = worlds end",
-      "",
-      "  http.request({",
-      "    url = SUPABASE_URL .. \"/rest/v1/rpc/report_server_stats\",",
-      "    method = \"POST\",",
-      "    headers = {",
-      "      [\"Content-Type\"] = \"application/json\",",
-      "      [\"apikey\"] = ANON_KEY,",
-      "      [\"Authorization\"] = \"Bearer \" .. ANON_KEY",
-      "    },",
-      "    body = json.encode(payload),",
-      "    callback = function(res)",
-      "      if not res.ok or res.status >= 300 then",
-      "        print(\"[GTPLAY stats] gagal kirim, status: \" .. tostring(res.status))",
-      "      end",
-      "    end",
-      "  })",
-      "end",
-      "",
-      "onAutoSaveRequest(function()",
-      "  local ok, err = pcall(reportStats)",
-      "  if not ok then print(\"[GTPLAY stats] error: \" .. tostring(err)) end",
-      "end)",
-      "",
-      "pcall(reportStats)",
-      ""
-    ].join("\n");
-  }
 
   async function renderServer(panel) {
     loadingPanel(panel);
@@ -1638,102 +1554,11 @@
     const intro = h("section", { class: "card" },
       h("h2", { class: "card-title" }, "Live server status"),
       h("p", { class: "muted" }, usesGtps
-        ? "Status, players online, and active worlds are read automatically from the GTPS Cloud public API every minute. No Lua script is needed."
-        : "SERVER_STATUS_URL in js/config.js is empty, so the landing page uses stats sent by the Lua script below.")
+        ? "Status, players online, and active worlds are read automatically from the GTPS Cloud public API every minute."
+        : "SERVER_STATUS_URL in js/config.js is empty. Set it to /api/server-status to show live server stats.")
     );
 
-    // 2) Advanced: reporter Lua lama (opsional, untuk peak online).
-    const advanced = h("details", { class: "card server-advanced" },
-      h("summary", { class: "card-title" }, "Advanced — Lua stats reporter (optional)"));
-    if (!usesGtps) advanced.open = true;
-
-    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection, advanced].filter(Boolean)));
-
-    if (GT.api.isDemo) {
-      advanced.append(h("p", { class: "muted" }, "The Lua reporter needs the Supabase backend."));
-      return;
-    }
-
-    let stats;
-    try {
-      stats = await admin.getServerStats();
-    } catch (error) {
-      advanced.append(h("div", { class: "notice notice-warn" }, h("p", {}, `${error.message} If you just updated the website, run the latest supabase/schema.sql.`)));
-      return;
-    }
-
-    const scriptSlot = h("div", { class: "stack" });
-
-    const generate = h("button", {
-      type: "button",
-      class: stats.configured ? "btn btn-outline" : "btn btn-primary",
-      onclick: async () => {
-        if (stats.configured) {
-          const ok = await confirmDialog({
-            title: "Generate a new token?",
-            message: "The old token stops working immediately. You'll need to paste the new script into your server.",
-            confirmLabel: "Generate new token",
-            danger: true
-          });
-          if (!ok) return;
-        }
-        generate.disabled = true;
-        try {
-          const token = await admin.rotateStatsToken();
-          const code = luaScript(token);
-          const area = h("textarea", { class: "input mono lua-script", readonly: true, rows: "18", spellcheck: "false", "aria-label": "Lua script" });
-          area.value = code;
-          scriptSlot.replaceChildren(
-            h("div", { class: "notice notice-warn" }, h("p", {}, h("strong", {}, "Copy this now. "), "The token is shown only once. Keep it secret — anyone with it can send fake stats.")),
-            area,
-            h("div", { class: "modal-actions start no-margin" }, GT.utils.copyButton(code, "Lua script", "btn btn-primary"))
-          );
-          stats.configured = true;
-          generate.textContent = "Generate new token";
-          generate.className = "btn btn-outline";
-          toast("Token created. Copy the script into your server.", "success");
-        } catch (error) {
-          toast(error.message, "error");
-        }
-        generate.disabled = false;
-      }
-    }, stats.configured ? "Generate new token" : "Generate token & script");
-
-    const online = Boolean(stats.online);
-    const reported = stats.reportedAt ? formatDateTime(stats.reportedAt) : "never";
-
-    advanced.append(
-      h("p", { class: "muted" }, usesGtps
-        ? "Only needed if you also want Peak online tracking. You can delete serverwebsite.lua from your server if you don't."
-        : "Sends player and world counts from your game server to the website every ~60 seconds."),
-      h("div", { class: "stat-grid" },
-        statCard("Lua reporter", online ? "Reporting" : "Not reporting", stats.reportedAt ? `Last report: ${reported}` : "No report received yet"),
-        statCard("Peak online", String(stats.peak ?? 0), "Highest players seen"),
-        h("div", { class: "stat stat-actions" },
-          h("button", {
-            type: "button",
-            class: "btn btn-ghost btn-sm",
-            onclick: async () => {
-              const ok = await confirmDialog({ title: "Reset peak?", message: "Peak online will be set to the current player count.", confirmLabel: "Reset" });
-              if (!ok) return;
-              try {
-                await admin.resetPeak();
-                toast("Peak reset.", "success");
-                renderDashboard();
-              } catch (error) {
-                toast(error.message, "error");
-              }
-            }
-          }, "Reset peak")
-        )
-      ),
-      h("ol", { class: "instructions server-steps" },
-        h("li", {}, "Generate a token below. A ready-to-use Lua script appears with your token inside."),
-        h("li", {}, "Add the script to your server's Lua scripts in GTPS Cloud, then restart or reload the scripts.")
-      ),
-      h("div", { class: "modal-actions start no-margin" }, generate),
-      scriptSlot
-    );
+    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection].filter(Boolean)));
   }
 
   // ------------------------------------------------

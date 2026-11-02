@@ -3681,61 +3681,12 @@ textarea.input {
   gap: 8px;
 }
 
-.server-steps {
-  margin-bottom: 16px;
-}
-
-.lua-script {
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: pre;
-  overflow-x: auto;
-  min-height: 300px;
-}
-
-.scriptSlot,
 .card .stack:empty {
   display: none;
 }
 
 .card .stack:not(:empty) {
   margin-top: 16px;
-}
-
-/* ---------- ADMIN: SERVER ADVANCED (v3.6) ---------- */
-
-.server-advanced > summary {
-  cursor: pointer;
-  list-style: none;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 0;
-}
-
-.server-advanced > summary::-webkit-details-marker {
-  display: none;
-}
-
-.server-advanced > summary::after {
-  content: "+";
-  font-family: var(--font-mono);
-  color: var(--red);
-  font-size: 20px;
-  transition: transform 0.2s var(--ease);
-}
-
-.server-advanced[open] > summary {
-  margin-bottom: 16px;
-}
-
-.server-advanced[open] > summary::after {
-  transform: rotate(45deg);
-}
-
-.server-advanced > * + * {
-  margin-top: 14px;
 }
 
 /* ==================================================
