@@ -71,21 +71,21 @@ GT.config = Object.freeze({
   //   • gtplayApk kosong → otomatis memakai link Android
   //     dari Admin → Downloads.
   LOGIN_GUIDE: {
-    serverIp: "103.126.117.167",                  // IP untuk file hosts (Windows & Mac)
-    certificateUrl: "",                           // link sertifikat GTPS Cloud (Windows, Growtopia v5.59+)
+    serverIp: "https://dash.gtps.cloud/ios/6986",                  // IP untuk file hosts (Windows & Mac)
+    certificateUrl: "https://dash.gtps.cloud/gtps-root-ca.crt",                           // link sertifikat GTPS Cloud (Windows, Growtopia v5.59+)
 
     // Link tombol download
-    gtplayApk: "",                                // GTPLAY APK (Android)
-    powerTunnel: "",                              // PowerTunnel APK
-    hostsGo: "",                                  // Hosts Go (No Root)
-    virtualHost: "",                              // Virtual Host APK
-    hostsFile: "",                                // file hosts untuk Virtual Host
-    surge5: "",                                   // Surge5 (App Store)
+    gtplayApk: "https://drive.google.com/file/d/17u4k8NOf2Q4eyh6db4kFFmXx8yrsjYtS/view?usp=sharing",                                // GTPLAY APK (Android)
+    powerTunnel: "https://drive.google.com/file/d/1eyPy9ejgiAUHYPJ_eyfrR2noGgzCrvHq/view?usp=sharing",                              // PowerTunnel APK
+    hostsGo: "https://drive.google.com/file/d/1T9pc1txadfoE84xqPYpz30UMIsBgjMma/view?usp=sharing",                                  // Hosts Go (No Root)
+    virtualHost: "https://drive.google.com/file/d/1eyPy9ejgiAUHYPJ_eyfrR2noGgzCrvHq/view?usp=sharing",                              // Virtual Host APK
+    hostsFile: "https://drive.google.com/file/d/1xArn0o_nUU37XYk1CHTKn_U3cpEqTQKo/view?usp=drive_link",                                // file hosts untuk Virtual Host
+    surge5: "https://apps.apple.com/us/app/surge-5/id1442620678",                                   // Surge5 (App Store)
 
     // Teks yang player salin/ketik
-    androidHostsUrl: "https://growtopia.id/android",  // PowerTunnel & Hosts Go
-    iosProfileUrl: "https://growtopia.id/ios",        // profil Surge5
-    hostsFileName: "GTPLAY-HOST.txt"                  // nama file hosts Virtual Host
+    androidHostsUrl: "https://dash.gtps.cloud/android/6986",  // PowerTunnel & Hosts Go
+    iosProfileUrl: "https://dash.gtps.cloud/ios/6986",        // profil Surge5
+    hostsFileName: "GTPLAY.txt"                  // nama file hosts Virtual Host
   },
 
   // ------------------------------------------------
