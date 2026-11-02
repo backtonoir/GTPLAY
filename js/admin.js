@@ -1,4 +1,4 @@
-// GTPLAY v3.6 (GTPS Cloud status)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // GTPLAY ADMIN DASHBOARD (admin.html)
 // --------------------------------------------------
@@ -26,7 +26,9 @@
     products: [],
     search: "",
     status: "all",
-    session: null
+    session: null,
+    reviews: [],
+    reviewFilter: "pending"
   };
 
   const ACTION_LABELS = {
@@ -64,7 +66,9 @@
     }
 
     function onKey(event) {
-      if (event.key === "Escape") close();
+      // Modal bertumpuk (mis. generator di atas form) → Escape menutup yang paling atas saja.
+      const overlays = document.querySelectorAll(".modal-overlay");
+      if (event.key === "Escape" && overlays[overlays.length - 1] === overlay) close();
     }
 
     closeBtn.addEventListener("click", close);
@@ -81,7 +85,7 @@
     return close;
   }
 
-  function promptDialog({ title, label, value, required, confirmLabel, mono }) {
+  function promptDialog({ title, label, value, required, confirmLabel, mono, tools }) {
     return new Promise(resolve => {
       let done = false;
       const input = h("textarea", { class: mono ? "input mono" : "input", id: "promptInput", rows: "3", spellcheck: mono ? "false" : null });
@@ -102,6 +106,7 @@
         }
       },
         h("div", { class: "field" }, h("label", { class: "label", for: "promptInput" }, label), input, error),
+        tools ? tools(input) : null,
         h("div", { class: "modal-actions" },
           h("button", { type: "button", class: "btn btn-ghost", onclick: () => close() }, "Back"),
           h("button", { type: "submit", class: "btn btn-primary" }, confirmLabel || "Save")
@@ -125,14 +130,17 @@
   // ------------------------------------------------
 
   async function loadData() {
-    const [orders, products, storeStatus] = await Promise.all([
+    const [orders, products, storeStatus, reviews] = await Promise.all([
       admin.listOrders(),
       admin.listProducts(),
-      GT.api.getStoreStatus().catch(() => null)
+      GT.api.getStoreStatus().catch(() => null),
+      admin.listReviews().catch(() => null)
     ]);
     state.orders = orders;
     state.products = products;
     state.storeStatus = storeStatus;
+    state.reviews = reviews || [];
+    state.reviewsUnavailable = reviews === null;
   }
 
   function stats() {
@@ -229,7 +237,7 @@
     }
 
     const fromHash = window.location.hash.replace("#", "");
-    if (["overview", "orders", "products", "announcements", "prices", "downloads", "server"].includes(fromHash)) state.tab = fromHash;
+    if (TABS.includes(fromHash)) state.tab = fromHash;
     renderDashboard();
   }
 
@@ -247,6 +255,7 @@
       ["overview", "Overview"],
       ["orders", `Orders (${state.orders.length})`],
       ["products", `Products (${state.products.length})`],
+      ["reviews", state.reviews.filter(r => r.status === "pending").length ? `Reviews (${state.reviews.filter(r => r.status === "pending").length})` : "Reviews"],
       ["announcements", "Announcements"],
       ["prices", "BGL Price"],
       ["downloads", "Downloads"],
@@ -279,6 +288,7 @@
     if (state.tab === "orders") renderOrders(panel);
     else if (state.tab === "products") renderProducts(panel);
     else if (state.tab === "announcements") renderAnnouncements(panel);
+    else if (state.tab === "reviews") renderReviews(panel);
     else if (state.tab === "prices") renderPrices(panel);
     else if (state.tab === "downloads") renderDownloads(panel);
     else if (state.tab === "server") renderServer(panel);
@@ -529,7 +539,9 @@
         h("thead", {}, h("tr", {}, h("th", {}, "Item"), h("th", {}, "Unit"), h("th", {}, "Qty"), h("th", {}, "Subtotal"))),
         h("tbody", {}, order.items.map(item => h("tr", {},
           h("td", {}, item.name),
-          h("td", {}, formatRupiah(item.unitPrice)),
+          h("td", {},
+            item.listPrice && item.listPrice > item.unitPrice ? h("s", { class: "price-old block" }, formatRupiah(item.listPrice)) : null,
+            formatRupiah(item.unitPrice)),
           h("td", {}, `×${item.quantity}`),
           h("td", {}, formatRupiah(item.subtotal))
         )))
@@ -561,7 +573,8 @@
               value: order.redeemCode || "",
               required: true,
               confirmLabel: "Save & complete",
-              mono: true
+              mono: true,
+              tools: input => generatorButton(order, codes => { input.value = codes; })
             });
             if (redeemCode === null) return;
           } else if (meta.needsNote) {
@@ -626,8 +639,161 @@
       h("p", { class: "help" }, order.status === "completed"
         ? "Visible to the customer now. Edit only to fix a mistake."
         : "The customer sees this once you mark the order as Completed."),
-      h("div", {}, save)
+      h("div", { class: "modal-actions start no-margin" },
+        generatorButton(order, codes => { area.value = codes; }),
+        save)
     );
+  }
+
+  // ------------------------------------------------
+  // REDEEM CODE GENERATOR
+  // --------------------------------------------------
+  // 1. Website membuat code acak (crypto) dengan prefix.
+  // 2. Server mengecek code belum pernah dipakai pesanan lain.
+  // 3. Admin membuat code yang SAMA di game lalu mencentang
+  //    konfirmasi → code dimasukkan ke kolom redeem code.
+  // 4. Admin tetap menekan Save / Save & complete.
+  // ------------------------------------------------
+
+  const PREFIX_KEY = "gtplay:admin:redeem-prefix";
+  const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+  function makeRedeemCode(prefix) {
+    const random = GT.utils.randomCode(8, CODE_ALPHABET);
+    const body = `${random.slice(0, 4)}-${random.slice(4)}`;
+    return prefix ? `${prefix}-${body}` : body;
+  }
+
+  function generatorButton(order, onUse) {
+    return h("button", {
+      type: "button",
+      class: "btn btn-outline btn-sm",
+      onclick: async () => {
+        const codes = await openRedeemGenerator(order);
+        if (codes) onUse(codes);
+      }
+    }, "⚙ Generate code");
+  }
+
+  function openRedeemGenerator(order) {
+    return new Promise(resolve => {
+      let done = false;
+      let codes = [];
+      let checked = false;
+
+      const totalQty = order.items.reduce((sum, item) => sum + item.quantity, 0);
+      const savedPrefix = GT.utils.storage.get(PREFIX_KEY, "GTPLAY");
+
+      const prefix = h("input", {
+        class: "input mono",
+        id: "genPrefix",
+        maxlength: "12",
+        value: savedPrefix,
+        spellcheck: "false",
+        autocapitalize: "characters",
+        oninput: () => { prefix.value = prefix.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+      });
+      const count = h("input", { class: "input", id: "genCount", type: "number", min: "1", max: "20", step: "1", value: "1", inputmode: "numeric" });
+
+      const list = h("ul", { class: "gen-list" });
+      const status = h("div", { class: "gen-status", "aria-live": "polite" });
+      const confirmBox = h("input", { type: "checkbox", id: "genConfirm", disabled: true, onchange: update });
+      const useBtn = h("button", { type: "button", class: "btn btn-primary", disabled: true }, "Use these codes");
+      const copyAll = h("button", {
+        type: "button",
+        class: "btn btn-ghost btn-sm",
+        hidden: true,
+        onclick: async () => {
+          const ok = await GT.utils.copyText(codes.join("\n"));
+          toast(ok ? "All codes copied." : "Couldn't copy — select the codes manually.", ok ? "success" : "error");
+        }
+      }, "Copy all");
+
+      function update() {
+        useBtn.disabled = !(codes.length && checked && confirmBox.checked);
+      }
+
+      async function generate() {
+        const n = Math.min(20, Math.max(1, Math.floor(Number(count.value) || 1)));
+        count.value = String(n);
+        GT.utils.storage.set(PREFIX_KEY, prefix.value);
+        codes = [];
+        while (codes.length < n) {
+          const code = makeRedeemCode(prefix.value);
+          if (!codes.includes(code)) codes.push(code);
+        }
+        checked = false;
+        confirmBox.checked = false;
+        confirmBox.disabled = true;
+        update();
+
+        list.replaceChildren(...codes.map(code => h("li", {},
+          h("code", { class: "redeem-code" }, code),
+          GT.utils.copyButton(code, "Redeem code")
+        )));
+        copyAll.hidden = codes.length < 2;
+        status.className = "gen-status";
+        status.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), " Checking that the codes are unique…");
+
+        try {
+          const result = await admin.checkRedeemCodes(order.id, codes.join("\n"));
+          if (result.duplicates && result.duplicates.length) {
+            status.className = "gen-status notice notice-danger";
+            status.replaceChildren(h("p", {}, `Already used in another order: ${result.duplicates.join(", ")}. Generate again.`));
+            return;
+          }
+          checked = true;
+          confirmBox.disabled = false;
+          status.className = "gen-status notice notice-ok";
+          status.replaceChildren(h("p", {}, "✓ Unique — not used in any other order."));
+          update();
+        } catch (error) {
+          status.className = "gen-status notice notice-warn";
+          status.replaceChildren(h("p", {}, `${error.message} If you just updated the website, run the latest supabase/schema.sql.`));
+        }
+      }
+
+      useBtn.addEventListener("click", () => {
+        done = true;
+        close();
+        resolve(codes.join("\n"));
+      });
+
+      const body = h("div", { class: "stack" },
+        h("div", { class: "notice notice-info" },
+          h("p", {}, h("strong", {}, "For: "), `${order.growId} · `, order.items.map(item => `${item.name} ×${item.quantity}`).join(", ")),
+          h("p", {}, "Codes only work after you create the same code in the game. Check them before giving them to the buyer.")
+        ),
+        h("div", { class: "form-grid" },
+          h("div", { class: "field" }, h("label", { class: "label", for: "genPrefix" }, "Prefix"), prefix, h("p", { class: "help" }, "Letters/numbers. Leave empty for no prefix.")),
+          h("div", { class: "field" }, h("label", { class: "label", for: "genCount" }, "How many codes"), count,
+            h("p", { class: "help" }, totalQty > 1 ? `This order has ${totalQty} items in total.` : "One code per order is usual."))
+        ),
+        h("div", { class: "modal-actions start no-margin" },
+          h("button", { type: "button", class: "btn btn-outline", onclick: generate }, "Generate"),
+          copyAll
+        ),
+        list,
+        status,
+        h("label", { class: "checkbox", for: "genConfirm" }, confirmBox,
+          h("span", {}, "I've created these codes in the game and checked that they work.")),
+        h("div", { class: "modal-actions" },
+          h("button", { type: "button", class: "btn btn-ghost", onclick: () => close() }, "Back"),
+          useBtn
+        )
+      );
+
+      const close = openModal("Generate redeem code", body);
+      generate();
+
+      const observer = new MutationObserver(() => {
+        if (!document.body.contains(body)) {
+          observer.disconnect();
+          if (!done) resolve(null);
+        }
+      });
+      observer.observe(document.body, { childList: true });
+    });
   }
 
   function row(label, value) {
@@ -650,6 +816,67 @@
 
   function eventsList(order) {
     return h("ul", {}, (order.events || []).map(e => h("li", {}, `${STATUS[e.status] ? STATUS[e.status].label : e.status} — ${formatDateTime(e.at)}`)));
+  }
+
+  // ------------------------------------------------
+  // REVIEWS (moderasi ulasan pembeli)
+  // ------------------------------------------------
+
+  function renderReviews(panel) {
+    if (state.reviewsUnavailable) {
+      panel.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {}, "Reviews need the latest database. Run supabase/schema.sql again in the Supabase SQL Editor.")));
+      return;
+    }
+
+    const filters = [["pending", "Waiting"], ["approved", "Published"], ["hidden", "Hidden"], ["all", "All"]];
+    const list = state.reviews.filter(r => state.reviewFilter === "all" || r.status === state.reviewFilter);
+    const badge = { pending: ["tone-warn", "Waiting"], approved: ["tone-ok", "Published"], hidden: ["tone-muted", "Hidden"] };
+
+    async function act(review, action) {
+      try {
+        if (action === "delete") {
+          const ok = await confirmDialog({ title: "Delete this review?", message: "The buyer cannot send a new review for this order afterwards.", confirmLabel: "Delete", danger: true });
+          if (!ok) return;
+          await admin.deleteReview(review.id);
+          toast("Review deleted.", "success");
+        } else {
+          await admin.setReviewStatus(review.id, action);
+          toast(action === "approved" ? "Review published." : action === "hidden" ? "Review hidden." : "Review moved back to waiting.", "success");
+        }
+        await reload();
+      } catch (error) {
+        toast(error.message, "error");
+      }
+    }
+
+    panel.replaceChildren(
+      h("div", { class: "admin-top admin-toolbar" },
+        h("p", { class: "muted" }, "Only published reviews appear on the landing page (random order). Reviews come from buyers with a Completed order."),
+        h("div", { class: "chips no-margin", role: "group", "aria-label": "Filter reviews" },
+          filters.map(([key, label]) => h("button", {
+            type: "button",
+            class: "chip",
+            "aria-pressed": String(state.reviewFilter === key),
+            onclick: () => { state.reviewFilter = key; renderDashboard(); }
+          }, `${label} (${key === "all" ? state.reviews.length : state.reviews.filter(r => r.status === key).length})`))
+        )
+      ),
+      list.length === 0
+        ? h("div", { class: "state-block" }, h("p", { class: "state-title" }, "No reviews here"))
+        : h("div", { class: "admin-reviews" }, list.map(review => h("article", { class: "card admin-review" },
+            h("div", { class: "order-head" },
+              h("div", { class: "admin-review-head" }, GT.stars ? GT.stars(review.rating) : `${review.rating}/5`, h("span", { class: `status-badge ${badge[review.status][0]}` }, badge[review.status][1])),
+              h("span", { class: "help" }, formatDateTime(review.createdAt))
+            ),
+            review.comment ? h("p", { class: "review-comment" }, review.comment) : h("p", { class: "muted" }, "(no comment)"),
+            h("p", { class: "help" }, `${review.growId} · `, h("button", { type: "button", class: "link-button mono", onclick: () => openOrder(review.orderId) }, review.orderId)),
+            h("div", { class: "row-actions start" },
+              review.status !== "approved" ? h("button", { type: "button", class: "btn btn-primary btn-sm", onclick: () => act(review, "approved") }, "Publish") : null,
+              review.status !== "hidden" ? h("button", { type: "button", class: "btn btn-outline btn-sm", onclick: () => act(review, "hidden") }, "Hide") : null,
+              h("button", { type: "button", class: "btn btn-danger btn-sm", onclick: () => act(review, "delete") }, "Delete")
+            )
+          )))
+    );
   }
 
   // ------------------------------------------------
@@ -692,7 +919,7 @@
               h("tbody", {}, state.products.map(product => h("tr", {},
                 h("td", {}, h("strong", {}, product.name), h("div", { class: "help mono" }, product.id)),
                 h("td", {}, product.category),
-                h("td", { class: "num" }, formatRupiah(product.price)),
+                h("td", { class: "num" }, productPriceCell(product)),
                 h("td", { class: "num" }, product.stock <= 0 ? h("span", { class: "status-badge tone-danger" }, "0") : String(product.stock)),
                 h("td", {}, product.active
                   ? h("span", { class: "status-badge tone-ok" }, "Active")
@@ -726,8 +953,28 @@
     );
   }
 
+  function productPriceCell(product) {
+    const percent = Number(product.discountPercent || 0);
+    if (!percent) return formatRupiah(product.price);
+    const active = GT.api.discountActive(product);
+    return h("div", { class: "price-cell" },
+      active ? h("s", { class: "price-old" }, formatRupiah(product.price)) : formatRupiah(product.price),
+      active ? h("strong", { class: "is-sale" }, formatRupiah(GT.api.effectivePrice(product))) : null,
+      h("span", { class: `status-badge ${active ? "tone-danger" : "tone-muted"}` }, active ? `−${percent}%` : `−${percent}% ended`)
+    );
+  }
+
+  // datetime-local (waktu lokal) ↔ ISO
+  function toLocalInput(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   function openProductForm(product) {
-    const p = product || { name: "", category: "", description: "", price: "", stock: "", active: true, image: "", fallback: "", sortOrder: state.products.length + 1 };
+    const p = product || { name: "", category: "", description: "", price: "", stock: "", active: true, image: "", fallback: "", sortOrder: state.products.length + 1, discountPercent: 0, discountEndsAt: null };
     const categories = [...new Set(state.products.map(item => item.category))];
     const error = h("p", { class: "error-text", role: "alert" });
 
@@ -745,6 +992,26 @@
     const fallback = h("input", { class: "input", id: "pFallback", value: p.fallback, maxlength: "10", placeholder: "Short text if image fails" });
     const sortOrder = h("input", { class: "input", id: "pSort", type: "number", step: "1", value: p.sortOrder });
     const active = h("input", { type: "checkbox", id: "pActive", checked: p.active });
+    const discount = h("input", { class: "input", id: "pDiscount", type: "number", min: "0", max: "90", step: "1", inputmode: "numeric", value: String(p.discountPercent || 0), oninput: () => previewSale() });
+    const discountEnds = h("input", { class: "input", id: "pDiscountEnds", type: "datetime-local", value: toLocalInput(p.discountEndsAt), oninput: () => previewSale() });
+    const salePreview = h("p", { class: "help sale-preview", "aria-live": "polite" });
+
+    function previewSale() {
+      const pct = Number(discount.value || 0);
+      const base = Number(price.value || 0);
+      if (!pct) {
+        salePreview.textContent = "No discount. 0 = normal price.";
+        return;
+      }
+      if (!Number.isInteger(pct) || pct < 0 || pct > 90) {
+        salePreview.textContent = "Use a whole number from 0 to 90.";
+        return;
+      }
+      const ends = discountEnds.value ? new Date(discountEnds.value) : null;
+      const sale = GT.api.effectivePrice({ price: base, discountPercent: pct, discountEndsAt: null });
+      salePreview.textContent = `Sale price: ${formatRupiah(sale)} (save ${formatRupiah(base - sale)})` +
+        (ends ? (ends.getTime() <= Date.now() ? " · end time is in the past, so the discount is off" : ` · until ${formatDateTime(ends)}`) : " · no end date");
+    }
 
     const upload = h("input", {
       type: "file",
@@ -783,7 +1050,9 @@
           image: image.value,
           fallback: fallback.value,
           sortOrder: Number(sortOrder.value),
-          active: active.checked
+          active: active.checked,
+          discountPercent: Number(discount.value || 0),
+          discountEndsAt: discountEnds.value ? new Date(discountEnds.value).toISOString() : null
         };
 
         if (!data.name.trim() || !data.category.trim()) {
@@ -796,6 +1065,10 @@
         }
         if (stock.value === "" || !Number.isInteger(data.stock) || data.stock < 0) {
           error.textContent = "Stock must be a whole number (0 or more).";
+          return;
+        }
+        if (!Number.isInteger(data.discountPercent) || data.discountPercent < 0 || data.discountPercent > 90) {
+          error.textContent = "Discount must be a whole number from 0 to 90 percent.";
           return;
         }
 
@@ -818,6 +1091,14 @@
         field("pDesc", "Description", description, null, true),
         field("pPrice", "Price (Rp)", price),
         field("pStock", "Stock", stock),
+        h("div", { class: "span-2 discount-box" },
+          h("p", { class: "label" }, "Discount"),
+          h("div", { class: "form-grid" },
+            field("pDiscount", "Discount (%)", discount, "0–90. The store shows the old price crossed out."),
+            field("pDiscountEnds", "Ends at (optional)", discountEnds, "Empty = until you set it back to 0.")
+          ),
+          salePreview
+        ),
         h("div", { class: "field span-2" },
           h("label", { class: "label", for: "pImage" }, "Image"),
           h("div", { class: "input-row" },
@@ -838,6 +1119,8 @@
       )
     );
 
+    price.addEventListener("input", previewSale);
+    previewSale();
     const close = openModal(product ? "Edit product" : "Add product", form, { wide: true });
   }
 
@@ -1412,7 +1695,7 @@
   }
 
   // Pindah tab lewat link #hash (mis. admin.html#prices).
-  const TABS = ["overview", "orders", "products", "announcements", "prices", "downloads", "server"];
+  const TABS = ["overview", "orders", "products", "reviews", "announcements", "prices", "downloads", "server"];
   window.addEventListener("hashchange", () => {
     const tab = window.location.hash.replace("#", "");
     if (state.session && TABS.includes(tab) && tab !== state.tab) {

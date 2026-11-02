@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // GTPLAY SHARED LAYOUT
 // --------------------------------------------------
 // Dipakai semua halaman toko:
@@ -150,7 +150,7 @@ GT.layout = (function () {
   function quantityControl(line) {
     const { product, quantity } = line;
 
-    return h("div", { class: "qty", role: "group", "aria-label": `Quantity for ${product.name}` },
+    return h("div", { class: "qty", role: "group", "aria-label": GT.t("Quantity for {name}", { name: product.name }) },
       h("button", {
         type: "button",
         class: "qty-btn",
@@ -227,7 +227,10 @@ GT.layout = (function () {
                 onclick: () => GT.cart.remove(line.product.id)
               }, "Remove")
             ),
-            h("p", { class: "cart-line-price" }, `${formatRupiah(line.product.price)} each`),
+            h("p", { class: "cart-line-price" },
+              line.product.originalPrice ? h("s", { class: "price-old" }, formatRupiah(line.product.originalPrice)) : null,
+              line.product.originalPrice ? " " : null,
+              GT.t("{price} each", { price: formatRupiah(line.product.price) })),
             h("div", { class: "cart-line-bottom" },
               quantityControl(line),
               h("strong", {}, formatRupiah(line.subtotal))
@@ -240,6 +243,9 @@ GT.layout = (function () {
     footerEl.append(
       h("div", { class: "cart-summary" },
         h("div", { class: "summary-row" }, h("span", {}, "Items"), h("span", {}, String(GT.cart.count()))),
+        GT.cart.savings() > 0
+          ? h("div", { class: "summary-row savings-row" }, h("span", {}, "You save"), h("span", {}, `−${formatRupiah(GT.cart.savings())}`))
+          : null,
         h("div", { class: "summary-row summary-total" }, h("span", {}, "Total"), h("strong", {}, formatRupiah(GT.cart.total())))
       ),
       h("a", { class: "btn btn-primary btn-block btn-lg", href: "checkout.html" }, "Checkout"),

@@ -104,6 +104,31 @@ create table if not exists public.order_events (
 
 create index if not exists order_events_order_idx on public.order_events (order_id, created_at);
 
+-- Diskon per produk (diatur dari Admin → Products). Harga akhir
+-- selalu dihitung di server (gt_effective_price), bukan di browser.
+alter table public.products add column if not exists discount_percent integer not null default 0;
+alter table public.products add column if not exists discount_ends_at timestamptz;
+do $$ begin
+  alter table public.products add constraint products_discount_percent_check check (discount_percent between 0 and 90);
+exception when duplicate_object then null; end $$;
+
+-- Harga normal saat pesanan dibuat (untuk menampilkan potongan diskon).
+alter table public.order_items add column if not exists list_price integer check (list_price is null or list_price >= 0);
+
+-- Ulasan pembeli (hanya dari pesanan Completed, tampil setelah disetujui admin).
+create table if not exists public.reviews (
+  id         bigint generated always as identity primary key,
+  order_id   text not null unique references public.orders (id) on delete cascade,
+  grow_id    text not null,
+  rating     smallint not null check (rating between 1 and 5),
+  comment    text not null default '' check (length(comment) <= 300),
+  status     text not null default 'pending' check (status in ('pending', 'approved', 'hidden')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists reviews_status_idx on public.reviews (status, created_at desc);
+
 create table if not exists public.admins (
   user_id    uuid primary key references auth.users (id) on delete cascade,
   created_at timestamptz not null default now()
@@ -133,6 +158,8 @@ alter table public.orders       enable row level security;
 alter table public.order_items  enable row level security;
 alter table public.order_events enable row level security;
 alter table public.admins       enable row level security;
+alter table public.reviews      enable row level security;
+-- reviews: tanpa policy → hanya lewat RPC (submit_review, list_reviews, admin_*).
 
 create or replace function public.is_admin()
 returns boolean
@@ -216,6 +243,48 @@ as $$
   select encode(extensions.digest(upper(btrim(coalesce(p_code, ''))), 'sha256'), 'hex');
 $$;
 
+-- Harga setelah diskon (sama dengan effectivePrice() di js/api.js).
+create or replace function public.gt_effective_price(p_price integer, p_percent integer, p_ends_at timestamptz)
+returns integer
+language sql
+stable
+set search_path = public, pg_temp
+as $$
+  select case
+    when coalesce(p_percent, 0) > 0 and (p_ends_at is null or p_ends_at > now())
+      then round(p_price * (100 - p_percent) / 100.0)::integer
+    else p_price
+  end;
+$$;
+
+-- Redeem code → daftar code (satu per baris, tanpa spasi, huruf besar).
+create or replace function public.gt_redeem_lines(p_codes text)
+returns text[]
+language sql
+immutable
+set search_path = public, pg_temp
+as $$
+  select coalesce(array_agg(distinct upper(btrim(line))) filter (where btrim(line) <> ''), '{}')
+  from regexp_split_to_table(coalesce(p_codes, ''), E'\\r?\\n') as line;
+$$;
+
+-- Code yang sudah dipakai pesanan lain (mencegah code ganda).
+create or replace function public.gt_redeem_conflicts(p_order_id text, p_codes text)
+returns text[]
+language sql
+stable
+set search_path = public, pg_temp
+as $$
+  select coalesce(array_agg(distinct c), '{}')
+  from unnest(public.gt_redeem_lines(p_codes)) as c
+  where exists (
+    select 1 from public.orders o
+    where o.id <> coalesce(p_order_id, '')
+      and o.redeem_code is not null
+      and c = any (public.gt_redeem_lines(o.redeem_code))
+  );
+$$;
+
 -- Bentuk JSON pesanan (camelCase, sama dengan adapter demo di js/api.js).
 create or replace function public.gt_order_json(p_order_id text, p_include_private boolean)
 returns jsonb
@@ -237,11 +306,16 @@ as $$
     -- Pembeli baru bisa melihat redeem code setelah pesanan Completed.
     'redeemCode', case when p_include_private or o.status = 'completed' then o.redeem_code else null end,
     'serverNow', now(),
+    'review', (
+      select jsonb_build_object('rating', r.rating, 'comment', r.comment, 'status', r.status, 'createdAt', r.created_at)
+      from public.reviews r where r.order_id = o.id
+    ),
     'items', coalesce((
       select jsonb_agg(jsonb_build_object(
         'productId', i.product_id,
         'name', i.product_name,
         'unitPrice', i.unit_price,
+        'listPrice', i.list_price,
         'quantity', i.quantity,
         'subtotal', i.subtotal
       ) order by i.id)
@@ -559,6 +633,7 @@ declare
   v_line     record;
   v_product  public.products;
   v_tries    integer := 0;
+  v_unit     integer;
 begin
   perform public.expire_stale_orders();
 
@@ -628,10 +703,13 @@ begin
 
     update public.products set stock = stock - v_line.qty where id = v_product.id;
 
-    insert into public.order_items (order_id, product_id, product_name, unit_price, quantity)
-    values (v_order_id, v_product.id, v_product.name, v_product.price, v_line.qty);
+    -- Harga akhir (sudah termasuk diskon yang masih berlaku).
+    v_unit := public.gt_effective_price(v_product.price, v_product.discount_percent, v_product.discount_ends_at);
 
-    v_total := v_total + v_product.price::bigint * v_line.qty;
+    insert into public.order_items (order_id, product_id, product_name, unit_price, list_price, quantity)
+    values (v_order_id, v_product.id, v_product.name, v_unit, v_product.price, v_line.qty);
+
+    v_total := v_total + v_unit::bigint * v_line.qty;
   end loop;
 
   update public.orders set total = v_total where id = v_order_id;
@@ -862,6 +940,11 @@ begin
     raise exception 'GT:REDEEM_REQUIRED';
   end if;
 
+  -- Code yang sama tidak boleh dipakai di dua pesanan.
+  if v_redeem is not null and cardinality(public.gt_redeem_conflicts(v_order.id, v_redeem)) > 0 then
+    raise exception 'GT:REDEEM_DUPLICATE %', array_to_string(public.gt_redeem_conflicts(v_order.id, v_redeem), ', ');
+  end if;
+
   -- Stok: lepas saat masuk status "released", reservasi ulang saat keluar darinya.
   if v_order.status = any (v_released) and not (v_next = any (v_released)) then
     perform public.gt_adjust_stock(v_order.id, -1);
@@ -907,6 +990,10 @@ begin
 
   if v_redeem is null and v_order.status = 'completed' then
     raise exception 'GT:REDEEM_REQUIRED';
+  end if;
+
+  if v_redeem is not null and cardinality(public.gt_redeem_conflicts(v_order.id, v_redeem)) > 0 then
+    raise exception 'GT:REDEEM_DUPLICATE %', array_to_string(public.gt_redeem_conflicts(v_order.id, v_redeem), ', ');
   end if;
 
   update public.orders set redeem_code = v_redeem, updated_at = now() where id = v_order.id;
@@ -999,6 +1086,131 @@ begin
 end $$;
 
 -- --------------------------------------------------
+-- REDEEM CODE GENERATOR (Admin → order → Generate)
+-- --------------------------------------------------
+-- Admin membuat code di website, mengecek ulang (code belum
+-- pernah dipakai), membuat code yang sama di game, lalu
+-- menyimpannya ke pesanan.
+
+create or replace function public.admin_check_redeem_codes(p_order_id text, p_codes text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  perform public.gt_require_admin();
+  return jsonb_build_object(
+    'codes', to_jsonb(public.gt_redeem_lines(p_codes)),
+    'duplicates', to_jsonb(public.gt_redeem_conflicts(p_order_id, p_codes))
+  );
+end $$;
+
+-- --------------------------------------------------
+-- REVIEWS (ulasan pembeli)
+-- --------------------------------------------------
+
+create or replace function public.submit_review(p_order_id text, p_access_code text, p_rating integer, p_comment text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_order public.orders;
+  v_comment text := btrim(regexp_replace(coalesce(p_comment, ''), '[[:cntrl:]]+', ' ', 'g'));
+begin
+  v_order := public.gt_owned_order(p_order_id, p_access_code);
+
+  if v_order.status <> 'completed' then
+    raise exception 'GT:REVIEW_NOT_ALLOWED';
+  end if;
+  if p_rating is null or p_rating not between 1 and 5 or length(v_comment) > 300 then
+    raise exception 'GT:INVALID_REVIEW';
+  end if;
+  if exists (select 1 from public.reviews where order_id = v_order.id) then
+    raise exception 'GT:REVIEW_EXISTS';
+  end if;
+
+  insert into public.reviews (order_id, grow_id, rating, comment)
+  values (v_order.id, v_order.grow_id, p_rating, v_comment);
+
+  return public.gt_order_json(v_order.id, false);
+end $$;
+
+-- Ulasan yang sudah disetujui, urutan acak. GrowID disamarkan.
+create or replace function public.list_reviews(p_limit integer default 6)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select jsonb_build_object(
+    'count', (select count(*) from public.reviews where status = 'approved'),
+    'average', (select round(avg(rating)::numeric, 1) from public.reviews where status = 'approved'),
+    'items', coalesce((
+      select jsonb_agg(x.item)
+      from (
+        select jsonb_build_object(
+          'name', left(r.grow_id, 2) || repeat('*', greatest(length(r.grow_id) - 3, 1)) || right(r.grow_id, 1),
+          'rating', r.rating,
+          'comment', r.comment,
+          'createdAt', r.created_at,
+          'items', (select string_agg(distinct i.product_name, ', ') from public.order_items i where i.order_id = r.order_id)
+        ) as item
+        from public.reviews r
+        where r.status = 'approved'
+        order by random()
+        limit least(greatest(coalesce(p_limit, 6), 1), 12)
+      ) x
+    ), '[]'::jsonb)
+  );
+$$;
+
+create or replace function public.admin_list_reviews()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  perform public.gt_require_admin();
+  return coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'id', r.id, 'orderId', r.order_id, 'growId', r.grow_id, 'rating', r.rating,
+      'comment', r.comment, 'status', r.status, 'createdAt', r.created_at
+    ) order by r.created_at desc)
+    from public.reviews r
+  ), '[]'::jsonb);
+end $$;
+
+create or replace function public.admin_set_review_status(p_id bigint, p_status text)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  perform public.gt_require_admin();
+  if p_status not in ('pending', 'approved', 'hidden') then
+    raise exception 'GT:INVALID_REVIEW';
+  end if;
+  update public.reviews set status = p_status, updated_at = now() where id = p_id;
+end $$;
+
+create or replace function public.admin_delete_review(p_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  perform public.gt_require_admin();
+  delete from public.reviews where id = p_id;
+end $$;
+
+-- --------------------------------------------------
 -- FUNCTION PRIVILEGES
 -- --------------------------------------------------
 
@@ -1009,6 +1221,21 @@ revoke all on function public.gt_adjust_stock(text, integer)          from publi
 revoke all on function public.gt_owned_order(text, text)              from public, anon, authenticated;
 revoke all on function public.expire_stale_orders()                   from public, anon, authenticated;
 revoke all on function public.gt_require_admin()                      from public, anon, authenticated;
+revoke all on function public.gt_redeem_lines(text)                   from public, anon, authenticated;
+revoke all on function public.gt_redeem_conflicts(text, text)         from public, anon, authenticated;
+
+revoke all on function public.submit_review(text, text, integer, text) from public;
+revoke all on function public.list_reviews(integer)                   from public;
+revoke all on function public.admin_check_redeem_codes(text, text)    from public, anon;
+revoke all on function public.admin_list_reviews()                    from public, anon;
+revoke all on function public.admin_set_review_status(bigint, text)   from public, anon;
+revoke all on function public.admin_delete_review(bigint)             from public, anon;
+grant execute on function public.submit_review(text, text, integer, text) to anon, authenticated;
+grant execute on function public.list_reviews(integer)                to anon, authenticated;
+grant execute on function public.admin_check_redeem_codes(text, text) to authenticated;
+grant execute on function public.admin_list_reviews()                 to authenticated;
+grant execute on function public.admin_set_review_status(bigint, text) to authenticated;
+grant execute on function public.admin_delete_review(bigint)          to authenticated;
 
 revoke all on function public.create_order(text, jsonb)               from public;
 revoke all on function public.get_order(text, text)                   from public;

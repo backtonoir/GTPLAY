@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // GTPLAY CART STATE
 // --------------------------------------------------
 // Keranjang disimpan di localStorage HANYA sebagai daftar
@@ -49,13 +49,13 @@ GT.cart = (function () {
       }
 
       if (product.stock <= 0) {
-        notices.push(`${product.name} is out of stock and was removed from your cart.`);
+        notices.push(GT.t("{name} is out of stock and was removed from your cart.", { name: product.name }));
         return false;
       }
 
       if (item.qty > product.stock) {
         item.qty = product.stock;
-        notices.push(`${product.name} quantity was reduced to the available stock (${product.stock}).`);
+        notices.push(GT.t("{name} quantity was reduced to the available stock ({n}).", { name: product.name, n: product.stock }));
       }
 
       return true;
@@ -79,14 +79,14 @@ GT.cart = (function () {
   function add(id, amount) {
     const product = getProduct(id);
     if (!product) return { ok: false, message: "This item is not available." };
-    if (product.stock <= 0) return { ok: false, message: `${product.name} is out of stock.` };
+    if (product.stock <= 0) return { ok: false, message: GT.t("{name} is out of stock.", { name: product.name }) };
 
     const step = amount || 1;
     const existing = entries.find(item => item.id === id);
     const current = existing ? existing.qty : 0;
 
     if (current + step > product.stock) {
-      return { ok: false, message: `Only ${product.stock} ${product.name} available.` };
+      return { ok: false, message: GT.t("Only {n} {name} available.", { n: product.stock, name: product.name }) };
     }
 
     if (existing) existing.qty += step;
@@ -94,7 +94,7 @@ GT.cart = (function () {
 
     save();
     emit();
-    return { ok: true, message: `${product.name} added to cart.` };
+    return { ok: true, message: GT.t("{name} added to cart.", { name: product.name }) };
   }
 
   function setQty(id, qty) {
@@ -104,7 +104,7 @@ GT.cart = (function () {
 
     const next = Math.floor(Number(qty));
     if (!Number.isFinite(next) || next < 1) return { ok: false, message: "Minimum quantity is 1." };
-    if (next > product.stock) return { ok: false, message: `Only ${product.stock} available.` };
+    if (next > product.stock) return { ok: false, message: GT.t("Only {n} available.", { n: product.stock }) };
 
     item.qty = next;
     save();
@@ -152,6 +152,11 @@ GT.cart = (function () {
     return lines().reduce((sum, line) => sum + line.subtotal, 0);
   }
 
+  // Total potongan diskon (harga normal − harga promo).
+  function savings() {
+    return lines().reduce((sum, line) => sum + (line.product.originalPrice ? (line.product.originalPrice - line.product.price) * line.quantity : 0), 0);
+  }
+
   function isEmpty() {
     return entries.length === 0;
   }
@@ -180,6 +185,7 @@ GT.cart = (function () {
     lines,
     count,
     total,
+    savings,
     isEmpty,
     onChange,
     hasCatalog: () => Boolean(catalog)

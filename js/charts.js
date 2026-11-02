@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // GTPLAY LINE CHART
 // --------------------------------------------------

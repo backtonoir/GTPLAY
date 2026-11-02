@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // GTPLAY STORE PAGE (index.html)
 // --------------------------------------------------
@@ -78,8 +78,8 @@
 
   function stockBadge(product) {
     if (product.stock <= 0) return h("span", { class: "stock-badge out" }, "Sold out");
-    if (product.stock <= LOW_STOCK) return h("span", { class: "stock-badge low" }, `Only ${product.stock} left`);
-    return h("span", { class: "stock-badge" }, `In stock · ${product.stock}`);
+    if (product.stock <= LOW_STOCK) return h("span", { class: "stock-badge low" }, GT.t("Only {n} left", { n: product.stock }));
+    return h("span", { class: "stock-badge" }, GT.t("In stock · {n}", { n: product.stock }));
   }
 
   function cartQuantity(productId) {
@@ -101,7 +101,7 @@
       type: "button",
       class: "btn btn-primary btn-sm",
       disabled: soldOut || maxed,
-      "aria-label": `${label}: ${product.name}`,
+      "aria-label": `${GT.t(label)}: ${product.name}`,
       onclick: () => {
         state.justAdded = product.id;
         const result = GT.cart.add(product.id, 1);
@@ -130,18 +130,36 @@
     });
   }
 
+  // Harga + harga coret bila sedang diskon.
+  function priceBlock(product) {
+    return h("div", { class: "price-stack" },
+      product.originalPrice
+        ? h("s", { class: "price-old" }, h("span", { class: "sr-only" }, GT.t("Normal price") + " "), formatRupiah(product.originalPrice))
+        : null,
+      h("span", { class: `product-price${product.originalPrice ? " is-sale" : ""}` }, formatRupiah(product.price))
+    );
+  }
+
+  function promoEnds(product) {
+    if (!product.originalPrice || !product.discountEndsAt) return null;
+    const date = new Date(product.discountEndsAt).toLocaleString(GT.utils.locale(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return h("p", { class: "promo-ends" }, GT.t("Promo until {date}", { date }));
+  }
+
   function productCard(product) {
-    return h("article", { class: `product-card${product.stock <= 0 ? " sold-out" : ""}` },
+    return h("article", { class: `product-card${product.stock <= 0 ? " sold-out" : ""}${product.originalPrice ? " on-sale" : ""}` },
       h("div", { class: "product-media" },
         GT.utils.imageWithFallback({ src: product.image, alt: product.name, fallback: product.fallback }),
         h("span", { class: "product-tag" }, product.category),
-        stockBadge(product)
+        stockBadge(product),
+        product.originalPrice ? h("span", { class: "discount-badge" }, `−${product.discountPercent}%`) : null
       ),
       h("div", { class: "product-body" },
         h("h3", {}, product.name),
         product.description ? h("p", { class: "product-desc" }, product.description) : null,
+        promoEnds(product),
         h("div", { class: "product-foot" },
-          h("span", { class: "product-price" }, formatRupiah(product.price)),
+          priceBlock(product),
           h("div", { class: "add-slot", dataset: { addSlot: product.id } }, addButton(product))
         )
       )
@@ -163,7 +181,9 @@
       return;
     }
 
-    meta.textContent = `${list.length} item${list.length === 1 ? "" : "s"}${state.category !== "All" ? ` in ${state.category}` : ""}`;
+    meta.textContent = state.category !== "All"
+      ? GT.t(list.length === 1 ? "{n} item in {category}" : "{n} items in {category}", { n: list.length, category: state.category })
+      : GT.t(list.length === 1 ? "{n} item" : "{n} items", { n: list.length });
 
     if (list.length === 0) {
       grid.replaceChildren(

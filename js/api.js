@@ -1,4 +1,4 @@
-// GTPLAY v3.6 (GTPS Cloud status)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // GTPLAY DATA LAYER
 // --------------------------------------------------
@@ -38,7 +38,7 @@ GT.api = (function () {
   const MESSAGES = {
     INVALID_GROWID: "GrowID is not valid.",
     EMPTY_CART: "Your cart is empty.",
-    TOO_MANY_ITEMS: `An order can contain up to ${MAX_LINES} different items.`,
+    TOO_MANY_ITEMS: "An order can contain up to {max} different items.",
     INVALID_QTY: "One of the quantities is not valid.",
     PRODUCT_UNAVAILABLE: "An item in your cart is no longer available.",
     OUT_OF_STOCK: "Not enough stock for one of the items.",
@@ -48,7 +48,7 @@ GT.api = (function () {
     INVALID_STATUS: "This order can no longer be changed from here.",
     PROOF_REQUIRED: "Please attach your payment proof.",
     PROOF_INVALID: "Payment proof must be a PNG, JPG, or WEBP image.",
-    PROOF_TOO_LARGE: `Payment proof must be smaller than ${GT.config.MAX_PROOF_MB} MB.`,
+    PROOF_TOO_LARGE: "Payment proof must be smaller than {mb} MB.",
     NOT_ADMIN: "This account is not an admin.",
     NOT_SIGNED_IN: "Please sign in.",
     INVALID_TRANSITION: "That status change is not allowed.",
@@ -58,11 +58,25 @@ GT.api = (function () {
     INVALID_ANNOUNCEMENT: "Announcement needs a title, content, and date.",
     INVALID_PRICE: "Price must be a whole number above 0 with a valid date.",
     REDEEM_REQUIRED: "Enter the redeem code before marking this order as completed.",
+    REDEEM_DUPLICATE: "This redeem code is already used in another order.",
+    REVIEW_NOT_ALLOWED: "You can review an order after it is completed.",
+    REVIEW_EXISTS: "You already reviewed this order.",
+    INVALID_REVIEW: "Pick a rating from 1 to 5 stars. Comments can be up to 300 characters.",
+    INVALID_DISCOUNT: "Discount must be a whole number from 0 to 90 percent.",
     NETWORK: "Could not reach the server. Check your connection and try again."
   };
 
+  // Pesan error mengikuti bahasa yang dipilih (GT.t dari js/i18n.js).
+  function message(code, detail) {
+    const tr = (text, vars) => (GT.t ? GT.t(text, vars) : text);
+    const template = MESSAGES[code];
+    if (!template) return detail || tr("Something went wrong.");
+    const text = tr(template, { max: MAX_LINES, mb: GT.config.MAX_PROOF_MB });
+    return code === "REDEEM_DUPLICATE" && detail ? `${text} (${detail})` : text;
+  }
+
   function fail(code, detail) {
-    throw new ApiError(code, MESSAGES[code] || detail || "Something went wrong.");
+    throw new ApiError(code, message(code, detail));
   }
 
   // ------------------------------------------------
@@ -171,6 +185,57 @@ GT.api = (function () {
     if (!String(product.category || "").trim()) fail("INVALID_PRODUCT");
     if (!Number.isInteger(price) || price < 0) fail("INVALID_PRODUCT");
     if (!Number.isInteger(stock) || stock < 0) fail("INVALID_PRODUCT");
+
+    const percent = Number(product.discountPercent || 0);
+    if (!Number.isInteger(percent) || percent < 0 || percent > 90) fail("INVALID_DISCOUNT");
+    if (product.discountEndsAt && Number.isNaN(new Date(product.discountEndsAt).getTime())) fail("INVALID_DISCOUNT");
+  }
+
+  // ------------------------------------------------
+  // DISKON
+  // --------------------------------------------------
+  // Sama dengan gt_effective_price() di schema.sql. Di mode
+  // Supabase, harga yang ditagih tetap dihitung ulang server.
+  // ------------------------------------------------
+
+  function discountActive(product, now) {
+    const percent = Number(product.discountPercent || 0);
+    if (percent <= 0) return false;
+    if (!product.discountEndsAt) return true;
+    return new Date(product.discountEndsAt).getTime() > (now || Date.now());
+  }
+
+  function effectivePrice(product, now) {
+    const base = Number(product.price) || 0;
+    return discountActive(product, now) ? Math.round(base * (100 - Number(product.discountPercent)) / 100) : base;
+  }
+
+  // Produk untuk pembeli: price = harga akhir, originalPrice = harga normal.
+  function toCustomerProduct(product) {
+    const active = discountActive(product);
+    return {
+      ...product,
+      price: effectivePrice(product),
+      originalPrice: active ? Number(product.price) : null,
+      discountPercent: active ? Number(product.discountPercent) : 0,
+      discountEndsAt: active ? product.discountEndsAt || null : null
+    };
+  }
+
+  // Redeem code → daftar code unik (sama dengan gt_redeem_lines di SQL).
+  function redeemLines(text) {
+    return [...new Set(String(text || "").split(/\r?\n/).map(line => line.trim().toUpperCase()).filter(Boolean))];
+  }
+
+  function validateReview(rating, comment) {
+    const value = Number(rating);
+    if (!Number.isInteger(value) || value < 1 || value > 5) fail("INVALID_REVIEW");
+    if (String(comment || "").trim().length > 300) fail("INVALID_REVIEW");
+  }
+
+  function maskName(growId) {
+    const name = String(growId || "");
+    return name.slice(0, 2) + "*".repeat(Math.max(name.length - 3, 1)) + name.slice(-1);
   }
 
   // Order ID: GTPLAY-YYYYMMDD-XXXXXX (6 karakter acak dari crypto).
@@ -223,6 +288,25 @@ GT.api = (function () {
     const SETTINGS_KEY = "gtplay:demo:settings";
     const ANNOUNCEMENTS_KEY = "gtplay:demo:announcements";
     const PRICES_KEY = "gtplay:demo:lock-prices";
+    const REVIEWS_KEY = "gtplay:demo:reviews";
+
+    function loadReviews() {
+      const saved = storage.get(REVIEWS_KEY, []);
+      return Array.isArray(saved) ? saved : [];
+    }
+
+    function saveReviews(list) {
+      storage.set(REVIEWS_KEY, list);
+    }
+
+    function redeemConflicts(orders, orderId, codes) {
+      const wanted = redeemLines(codes);
+      const used = new Set();
+      Object.values(orders).forEach(order => {
+        if (order.id !== orderId && order.redeemCode) redeemLines(order.redeemCode).forEach(code => used.add(code));
+      });
+      return wanted.filter(code => used.has(code));
+    }
 
     function loadSettings() {
       const saved = storage.get(SETTINGS_KEY, null);
@@ -309,6 +393,8 @@ GT.api = (function () {
       delete copy.accessCode;
       if (!copy.redeemCode) copy.redeemCode = null;
       if (!includePrivate && copy.status !== "completed") copy.redeemCode = null;
+      const review = loadReviews().find(item => item.orderId === order.id);
+      copy.review = review ? { rating: review.rating, comment: review.comment, status: review.status, createdAt: review.createdAt } : null;
       return copy;
     }
 
@@ -342,7 +428,47 @@ GT.api = (function () {
       },
 
       async listProducts() {
-        return loadProducts().filter(p => p.active);
+        return loadProducts().filter(p => p.active).map(toCustomerProduct);
+      },
+
+      async listReviews(limit) {
+        const approved = loadReviews().filter(item => item.status === "approved");
+        const orders = storage.get(ORDERS_KEY, {});
+        const shuffled = approved.slice().sort(() => Math.random() - 0.5).slice(0, Math.min(limit || 6, 12));
+        const average = approved.length ? Math.round(approved.reduce((sum, r) => sum + r.rating, 0) / approved.length * 10) / 10 : null;
+        return {
+          count: approved.length,
+          average,
+          items: shuffled.map(review => {
+            const order = orders[review.orderId];
+            return {
+              name: maskName(review.growId),
+              rating: review.rating,
+              comment: review.comment,
+              createdAt: review.createdAt,
+              items: order ? [...new Set(order.items.map(item => item.name))].join(", ") : ""
+            };
+          })
+        };
+      },
+
+      async submitReview(orderId, accessCode, rating, comment) {
+        validateReview(rating, comment);
+        const { order } = findOwned(orderId, accessCode);
+        if (order.status !== "completed") fail("REVIEW_NOT_ALLOWED");
+        const list = loadReviews();
+        if (list.some(item => item.orderId === order.id)) fail("REVIEW_EXISTS");
+        list.push({
+          id: `rev-${randomCode(8, "0123456789abcdef")}`,
+          orderId: order.id,
+          growId: order.growId,
+          rating: Number(rating),
+          comment: String(comment || "").replace(/[\u0000-\u001f]+/g, " ").trim(),
+          status: "pending",
+          createdAt: new Date().toISOString()
+        });
+        saveReviews(list);
+        return publicOrder(order);
       },
 
       async createOrder({ growId, items }) {
@@ -369,12 +495,14 @@ GT.api = (function () {
           if (!product) fail("PRODUCT_UNAVAILABLE");
           if (product.stock < quantity) fail("OUT_OF_STOCK");
 
+          const unitPrice = effectivePrice(product);
           return {
             productId: product.id,
             name: product.name,
-            unitPrice: product.price,
+            unitPrice,
+            listPrice: product.price,
             quantity,
-            subtotal: product.price * quantity
+            subtotal: unitPrice * quantity
           };
         });
 
@@ -488,6 +616,8 @@ GT.api = (function () {
 
           const redeem = String(redeemCode || "").trim();
           if (nextStatus === "completed" && !redeem && !order.redeemCode) fail("REDEEM_REQUIRED");
+          const duplicates = redeem ? redeemConflicts(orders, order.id, redeem) : [];
+          if (duplicates.length) fail("REDEEM_DUPLICATE", duplicates.join(", "));
 
           if (note) order.adminNote = note;
           if (redeem) order.redeemCode = redeem;
@@ -506,11 +636,30 @@ GT.api = (function () {
 
           const redeem = String(redeemCode || "").trim();
           if (!redeem && order.status === "completed") fail("REDEEM_REQUIRED");
+          const duplicates = redeem ? redeemConflicts(orders, order.id, redeem) : [];
+          if (duplicates.length) fail("REDEEM_DUPLICATE", duplicates.join(", "));
 
           order.redeemCode = redeem || null;
           order.updatedAt = new Date().toISOString();
           saveOrders(orders);
           return publicOrder(order, true);
+        },
+
+        async checkRedeemCodes(orderId, codes) {
+          return { codes: redeemLines(codes), duplicates: redeemConflicts(sweepExpired(), orderId, codes) };
+        },
+
+        async listReviews() {
+          return loadReviews().slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        },
+
+        async setReviewStatus(id, status) {
+          if (!["pending", "approved", "hidden"].includes(status)) fail("INVALID_REVIEW");
+          saveReviews(loadReviews().map(item => (item.id === id ? { ...item, status } : item)));
+        },
+
+        async deleteReview(id) {
+          saveReviews(loadReviews().filter(item => item.id !== id));
         },
 
         async listProducts() {
@@ -532,7 +681,9 @@ GT.api = (function () {
             active: Boolean(input.active),
             image: (input.image || "").trim(),
             fallback: (input.fallback || input.name).trim().slice(0, 10).toUpperCase(),
-            sortOrder: Number(input.sortOrder) || products.length + 1
+            sortOrder: Number(input.sortOrder) || products.length + 1,
+            discountPercent: Number(input.discountPercent || 0),
+            discountEndsAt: input.discountEndsAt || null
           };
 
           if (index >= 0) products[index] = product;
@@ -627,6 +778,7 @@ GT.api = (function () {
           storage.remove(ORDERS_KEY);
           storage.remove(ANNOUNCEMENTS_KEY);
           storage.remove(PRICES_KEY);
+          storage.remove(REVIEWS_KEY);
         }
       }
     };
@@ -696,7 +848,10 @@ GT.api = (function () {
       const text = String((error && (error.message || error.error_description)) || "");
       const match = text.match(/GT:([A-Z_]+)/);
 
-      if (match) return new ApiError(match[1], MESSAGES[match[1]] || text);
+      if (match) {
+        const detail = text.slice(text.indexOf(match[0]) + match[0].length).trim();
+        return new ApiError(match[1], MESSAGES[match[1]] ? message(match[1], detail) : text);
+      }
       if (/invalid api key|no api key|apikey/i.test(text)) {
         return new ApiError("CONFIG", "Supabase menolak API key. Cek SUPABASE_ANON_KEY di js/config.js (pakai anon / publishable key dari project yang sama dengan URL-nya).");
       }
@@ -735,7 +890,9 @@ GT.api = (function () {
         active: row.active,
         image: row.image_url || "",
         fallback: row.fallback || row.name.slice(0, 6).toUpperCase(),
-        sortOrder: row.sort_order
+        sortOrder: row.sort_order,
+        discountPercent: row.discount_percent || 0,
+        discountEndsAt: row.discount_ends_at || null
       };
     }
 
@@ -835,11 +992,11 @@ GT.api = (function () {
           const sb = await client();
           const { data, error } = await sb
             .from("products")
-            .select("id,name,category,description,price,stock,active,image_url,fallback,sort_order")
+            .select("id,name,category,description,price,stock,active,image_url,fallback,sort_order,discount_percent,discount_ends_at")
             .eq("active", true)
             .order("sort_order", { ascending: true });
           if (error) throw error;
-          return data.map(mapProduct);
+          return data.map(mapProduct).map(toCustomerProduct);
         } catch (error) {
           throw mapError(error);
         }
@@ -859,6 +1016,20 @@ GT.api = (function () {
 
       async getOrder(orderId, accessCode) {
         return mapOrder(await rpc("get_order", { p_order_id: orderId, p_access_code: accessCode }));
+      },
+
+      async listReviews(limit) {
+        return rpc("list_reviews", { p_limit: limit || 6 });
+      },
+
+      async submitReview(orderId, accessCode, rating, comment) {
+        validateReview(rating, comment);
+        return mapOrder(await rpc("submit_review", {
+          p_order_id: orderId,
+          p_access_code: accessCode,
+          p_rating: Number(rating),
+          p_comment: String(comment || "").trim()
+        }));
       },
 
       async submitPayment(orderId, accessCode, file) {
@@ -1020,6 +1191,22 @@ GT.api = (function () {
           await tableWrite(sb => sb.from("lock_prices").delete().eq("recorded_on", recordedOn));
         },
 
+        async checkRedeemCodes(orderId, codes) {
+          return rpc("admin_check_redeem_codes", { p_order_id: orderId || null, p_codes: codes || "" });
+        },
+
+        async listReviews() {
+          return rpc("admin_list_reviews");
+        },
+
+        async setReviewStatus(id, status) {
+          return rpc("admin_set_review_status", { p_id: id, p_status: status });
+        },
+
+        async deleteReview(id) {
+          return rpc("admin_delete_review", { p_id: id });
+        },
+
         async setRedeemCode(orderId, redeemCode) {
           return rpc("admin_set_redeem_code", {
             p_order_id: orderId,
@@ -1032,7 +1219,7 @@ GT.api = (function () {
             const sb = await client();
             const { data, error } = await sb
               .from("products")
-              .select("id,name,category,description,price,stock,active,image_url,fallback,sort_order")
+              .select("id,name,category,description,price,stock,active,image_url,fallback,sort_order,discount_percent,discount_ends_at")
               .order("sort_order", { ascending: true });
             if (error) throw error;
             return data.map(mapProduct);
@@ -1052,7 +1239,9 @@ GT.api = (function () {
             active: Boolean(input.active),
             image_url: (input.image || "").trim() || null,
             fallback: (input.fallback || input.name).trim().slice(0, 10).toUpperCase(),
-            sort_order: Number(input.sortOrder) || 0
+            sort_order: Number(input.sortOrder) || 0,
+            discount_percent: Number(input.discountPercent || 0),
+            discount_ends_at: input.discountEndsAt || null
           };
           if (input.id) row.id = input.id;
 
@@ -1114,6 +1303,8 @@ GT.api = (function () {
     myOrders,
     ADMIN_TRANSITIONS,
     todayISO,
+    effectivePrice,
+    discountActive,
     isDemo: adapter.mode === "demo"
   };
 })();

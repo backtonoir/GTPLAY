@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // GTPLAY TRACK ORDER PAGE (track.html)
 // --------------------------------------------------
@@ -52,11 +52,15 @@
         infoRow("GrowID", order.growId),
         infoRow("Order date", formatDateTime(order.createdAt)),
         infoRow("Items", order.items.map(item => `${item.name} ×${item.quantity}`).join(", ")),
+        order.items.some(item => item.listPrice && item.listPrice > item.unitPrice)
+          ? infoRow("You save", `−${formatRupiah(order.items.reduce((sum, item) => sum + (item.listPrice && item.listPrice > item.unitPrice ? (item.listPrice - item.unitPrice) * item.quantity : 0), 0))}`)
+          : null,
         h("div", { class: "summary-row summary-total" }, h("span", {}, "Total Payment"), h("strong", {}, formatRupiah(order.total))),
         GT.redeemBlock(order),
         order.adminNote && order.status === "rejected"
-          ? h("div", { class: "notice notice-danger track-note" }, h("p", {}, `Admin note: ${order.adminNote}`))
+          ? h("div", { class: "notice notice-danger track-note" }, h("p", {}, GT.t("Admin note: {note}", { note: order.adminNote })))
           : null,
+        GT.reviewBlock(order, code, updated => renderOrder(updated, code)),
         h("h3", { class: "card-title timeline-title-head track-tl-head" }, "Timeline"),
         GT.timeline(order),
         actions
@@ -67,7 +71,7 @@
   async function track(orderId, code) {
     errorEl.textContent = "";
     submitBtn.disabled = true;
-    submitBtn.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), "Searching…");
+    submitBtn.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), GT.t("Searching…"));
 
     try {
       const order = await GT.api.getOrder(orderId, code);
@@ -80,7 +84,7 @@
       errorEl.textContent = error.message;
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Track order";
+      submitBtn.textContent = GT.t("Track order");
     }
   }
 
@@ -105,7 +109,7 @@
           }
         },
           h("span", {}, ref.id),
-          h("span", { class: "muted" }, ref.createdAt ? new Date(ref.createdAt).toLocaleDateString("id-ID") : "View")
+          h("span", { class: "muted" }, ref.createdAt ? new Date(ref.createdAt).toLocaleDateString(GT.utils.locale()) : "View")
         )
       )
     ));
@@ -117,7 +121,7 @@
     const code = codeInput.value.trim().toUpperCase();
 
     if (!orderId || !code) {
-      errorEl.textContent = "Enter both the Order ID and the access code.";
+      errorEl.textContent = GT.t("Enter both the Order ID and the access code.");
       (orderId ? codeInput : idInput).focus();
       return;
     }

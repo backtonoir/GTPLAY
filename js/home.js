@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // GTPLAY LANDING PAGE (index.html)
 // --------------------------------------------------
@@ -9,8 +9,8 @@
 (function () {
   const { h, $, formatRupiah, formatDateTime } = GT.utils;
 
-  const dateLong = iso => new Date(`${iso}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
-  const dateShort = iso => new Date(`${iso}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+  const dateLong = iso => new Date(`${iso}T00:00:00`).toLocaleDateString(GT.utils.locale(), { day: "numeric", month: "long", year: "numeric" });
+  const dateShort = iso => new Date(`${iso}T00:00:00`).toLocaleDateString(GT.utils.locale(), { day: "numeric", month: "short" });
   const number = value => new Intl.NumberFormat("id-ID").format(value);
 
   // ------------------------------------------------
@@ -49,8 +49,8 @@
     }
 
     const notes = [];
-    if (status.uptime) notes.push(`Uptime ${status.uptime}`);
-    if (status.updatedAt) notes.push(`${status.online ? "Updated" : "Last seen"} ${formatDateTime(status.updatedAt)}`);
+    if (status.uptime) notes.push(GT.t("Uptime {time}", { time: status.uptime }));
+    if (status.updatedAt) notes.push(GT.t(status.online ? "Updated {time}" : "Last seen {time}", { time: formatDateTime(status.updatedAt) }));
 
     const has = value => value !== null && value !== undefined;
 
@@ -112,9 +112,9 @@
       const word = diff > 0 ? "up" : diff < 0 ? "down" : "no change";
       change = h("p", { class: `price-change ${diff > 0 ? "is-up" : diff < 0 ? "is-down" : ""}` },
         h("span", { "aria-hidden": "true" }, arrow),
-        ` ${diff === 0 ? "No change" : `${diff > 0 ? "+" : "−"}${formatRupiah(Math.abs(diff))} (${pct > 0 ? "+" : ""}${pct.toFixed(1).replace(".", ",")}%)`}`,
-        h("span", { class: "sr-only" }, ` ${word}`),
-        h("span", { class: "muted" }, ` vs ${dateShort(previous.recordedOn)}`)
+        ` ${diff === 0 ? GT.t("No change") : `${diff > 0 ? "+" : "−"}${formatRupiah(Math.abs(diff))} (${pct > 0 ? "+" : ""}${pct.toFixed(1).replace(".", GT.i18n && GT.i18n.lang === "en" ? "." : ",")}%)`}`,
+        h("span", { class: "sr-only" }, ` ${GT.t(word)}`),
+        h("span", { class: "muted" }, ` ${GT.t("vs {date}", { date: dateShort(previous.recordedOn) })}`)
       );
     }
 
@@ -123,7 +123,7 @@
     priceRoot.replaceChildren(
       h("div", { class: "price-head" },
         h("div", {},
-          h("p", { class: "price-label" }, `Latest · ${dateLong(latest.recordedOn)}`),
+          h("p", { class: "price-label" }, GT.t("Latest · {date}", { date: dateLong(latest.recordedOn) })),
           h("p", { class: "price-value" }, formatRupiah(latest.price)),
           change
         ),
@@ -223,6 +223,40 @@
   }
 
   // ------------------------------------------------
+  // REVIEWS (ulasan asli pembeli, disetujui admin)
+  // ------------------------------------------------
+
+  async function loadReviews() {
+    const root = $("#reviewList");
+    const summary = $("#reviewSummary");
+    if (!root) return;
+
+    try {
+      const data = await GT.api.listReviews(6);
+      if (!data || !data.count) {
+        summary.replaceChildren();
+        root.replaceChildren(h("div", { class: "state-block borderless" },
+          h("p", { class: "state-title" }, "No reviews yet"),
+          h("p", { class: "state-text" }, "Buy an item and leave a review once your order is completed."),
+          h("a", { class: "btn btn-outline btn-sm", href: "store.html" }, "Visit Store")));
+        return;
+      }
+
+      summary.replaceChildren(
+        GT.stars(data.average),
+        h("strong", {}, String(data.average).replace(".", GT.i18n && GT.i18n.lang === "en" ? "." : ",")),
+        h("span", { class: "muted" }, GT.t(data.count === 1 ? "from {n} review" : "from {n} reviews", { n: data.count })),
+        data.count > data.items.length
+          ? h("button", { type: "button", class: "btn btn-ghost btn-sm", onclick: loadReviews }, "↻ Show others")
+          : ""
+      );
+      root.replaceChildren(...data.items.map(item => GT.reviewCard(item)));
+    } catch (error) {
+      root.replaceChildren(h("p", { class: "muted" }, "Couldn't load reviews."));
+    }
+  }
+
+  // ------------------------------------------------
   // INIT
   // ------------------------------------------------
 
@@ -232,6 +266,7 @@
   setInterval(loadServerStatus, Math.max(15, GT.config.SERVER_STATUS_REFRESH_SECONDS || 60) * 1000);
 
   loadPrices();
+  loadReviews();
   loadAnnouncements();
 
   GT.api.getStoreStatus()

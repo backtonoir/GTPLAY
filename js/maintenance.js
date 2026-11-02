@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // MAINTENANCE PAGE (maintenance.html)
 // --------------------------------------------------
@@ -23,13 +23,13 @@
       wasOn = true;
       if (status.message) messageEl.textContent = status.message;
       if (status.eta) etaEl.textContent = status.eta;
-      statusEl.textContent = "In Progress";
+      statusEl.textContent = GT.t("In Progress");
       backBtn.hidden = true;
       return;
     }
 
     // Toko sudah buka.
-    statusEl.textContent = "Online";
+    statusEl.textContent = GT.t("Online");
     etaEl.textContent = "—";
     backBtn.hidden = false;
 

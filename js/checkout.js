@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // GTPLAY CHECKOUT PAGE (checkout.html)
 // --------------------------------------------------
@@ -24,7 +24,7 @@
   function quantityControl(line) {
     const { product, quantity } = line;
 
-    return h("div", { class: "qty", role: "group", "aria-label": `Quantity for ${product.name}` },
+    return h("div", { class: "qty", role: "group", "aria-label": GT.t("Quantity for {name}", { name: product.name }) },
       h("button", {
         type: "button",
         class: "qty-btn",
@@ -71,7 +71,7 @@
                   }),
                   h("div", {},
                     h("strong", {}, line.product.name),
-                    h("span", { class: "muted" }, `${line.product.category} · ${line.product.stock} in stock`),
+                    h("span", { class: "muted" }, GT.t("{category} · {n} in stock", { category: line.product.category, n: line.product.stock })),
                     h("button", {
                       type: "button",
                       class: "link-button danger",
@@ -81,7 +81,9 @@
                   )
                 )
               ),
-              h("td", {}, formatRupiah(line.product.price)),
+              h("td", {},
+                line.product.originalPrice ? h("s", { class: "price-old block" }, formatRupiah(line.product.originalPrice)) : null,
+                h("span", { class: line.product.originalPrice ? "is-sale" : null }, formatRupiah(line.product.price))),
               h("td", {}, quantityControl(line)),
               h("td", {}, h("strong", {}, formatRupiah(line.subtotal)))
             )
@@ -142,7 +144,7 @@
         }
 
         if (!form.confirmed) {
-          formError.textContent = "Please confirm your GrowID is correct.";
+          formError.textContent = GT.t("Please confirm your GrowID is correct.");
           confirmBox.focus();
           return;
         }
@@ -163,10 +165,13 @@
       ),
       h("div", { class: "cart-summary", style: null },
         h("div", { class: "summary-row" }, h("span", {}, "Items"), h("span", { class: "value" }, String(GT.cart.count()))),
+        GT.cart.savings() > 0
+          ? h("div", { class: "summary-row savings-row" }, h("span", {}, "You save"), h("span", { class: "value" }, `−${formatRupiah(GT.cart.savings())}`))
+          : null,
         h("div", { class: "summary-row summary-total" }, h("span", {}, "Total Payment"), h("strong", {}, formatRupiah(GT.cart.total())))
       ),
       h("div", { class: "notice notice-info checkout-notice" },
-        h("p", {}, `After you confirm, you'll have ${GT.config.PAYMENT_WINDOW_MINUTES} minutes to pay with QRIS. Stock is held for you during that time.`)
+        h("p", {}, GT.t("After you confirm, you'll have {min} minutes to pay with QRIS. Stock is held for you during that time.", { min: GT.config.PAYMENT_WINDOW_MINUTES }))
       ),
       formError,
       submitBtn
@@ -191,8 +196,8 @@
       window.location.href = `payment.html?order=${encodeURIComponent(result.orderId)}#k=${encodeURIComponent(result.accessCode)}`;
     } catch (error) {
       submitting = false;
-      errorEl.textContent = error.message || "Could not create the order.";
-      toast(error.message || "Could not create the order.", "error");
+      errorEl.textContent = error.message || GT.t("Could not create the order.");
+      toast(error.message || GT.t("Could not create the order."), "error");
 
       // Stok/harga berubah → muat ulang katalog agar keranjang disesuaikan.
       if (error.code === "MAINTENANCE") {
@@ -204,7 +209,7 @@
       }
 
       button.disabled = false;
-      button.textContent = "Confirm Order";
+      button.textContent = GT.t("Confirm Order");
       if (!GT.cart.isEmpty()) render(errorEl.textContent);
     }
   }

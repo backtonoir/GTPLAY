@@ -13,6 +13,10 @@ Toko item untuk **GTPLAY — Growtopia Private Server**. Frontend tetap HTML, CS
 - **Halaman lain** — How to Buy & Payment Guide, FAQ, About / Terms / Refund Policy, Announcement, Maintenance, 404.
 
 - **Redeem Code** — item dikirim dalam bentuk redeem code. Admin mengisi code (boleh lebih dari satu, satu per baris) saat menandai pesanan *Completed*; pembeli menyalinnya dengan tombol **Copy** di halaman pembayaran & Track Order. Code hanya terlihat oleh pembeli yang memegang Order ID + access code.
+- **Redeem Code Generator** — Admin → buka pesanan → **⚙ Generate code**: website membuat code acak (prefix bisa diatur), server mengecek code belum pernah dipakai pesanan lain, admin membuat code yang sama di game lalu mencentang konfirmasi sebelum code dipakai. Code yang sama tidak bisa dipakai di dua pesanan (dijaga server).
+- **Diskon** — per produk, diatur di Admin → Products (persen 0–90 + tanggal berakhir opsional). Harga akhir **dihitung server**; toko menampilkan harga coret + badge diskon, keranjang & checkout menampilkan total hemat.
+- **Ulasan (Reviews)** — hanya pembeli dengan pesanan *Completed* yang bisa memberi ulasan (bintang + komentar). Ulasan tampil di landing page **setelah disetujui admin** (Admin → Reviews: Publish / Hide / Delete), urutan acak, GrowID disamarkan. Tidak ada testimoni palsu.
+- **Dwi-bahasa (ID/EN)** — tombol bendera Indonesia & Amerika di navbar. Pilihan bahasa tersimpan di perangkat. Menambah/mengubah terjemahan: edit `js/i18n-dict.js`.
 
 Status pesanan: `Pending Payment → Payment Submitted → Payment Verified → Processing → Completed`, plus `Expired`, `Cancelled`, `Rejected`.
 
@@ -122,7 +126,14 @@ Semua di **`js/config.js`**.
 - Code bisa diisi lebih awal (status Verified/Processing) atau diperbaiki setelah Completed lewat kolom **Redeem code → Save redeem code**.
 - Teks petunjuk di bawah code: `REDEEM_HELP` di `js/config.js`.
 
-**Upgrade database yang sudah berjalan:** jalankan ulang seluruh isi `supabase/schema.sql` di SQL Editor. Aman diulang — data, produk, dan admin tidak hilang; kolom `redeem_code` dan fungsi baru akan ditambahkan.
+**Upgrade database yang sudah berjalan:** jalankan ulang seluruh isi `supabase/schema.sql` di SQL Editor. Aman diulang — data, produk, dan admin tidak hilang; kolom baru (`redeem_code`, `discount_percent`, `discount_ends_at`, `list_price`), tabel `reviews`, dan fungsi baru akan ditambahkan.
+
+## Diskon, ulasan & dwi-bahasa (v3.7)
+
+- **Diskon:** Admin → Products → Edit → kolom **Discount (%)** (0–90) dan **Ends at** (opsional). Kosongkan Ends at agar diskon berlaku terus sampai diubah kembali ke 0. Harga akhir dihitung di server (`gt_effective_price`), jadi harga dari browser tetap diabaikan.
+- **Generator redeem code:** Admin → buka pesanan → **Generate code**. Prefix terakhir diingat di browser admin. Pakai **Generate** lagi jika ada code yang bentrok. Centang konfirmasi **hanya** setelah code dibuat di game.
+- **Ulasan:** muncul otomatis di halaman pesanan setelah *Completed*. Admin menyetujui di tab **Reviews**. Hanya ulasan yang dipublikasikan tampil di landing page. Hapus ulasan juga menghapus kemampuan pembeli mengirim ulasan baru untuk pesanan itu.
+- **Bahasa:** dua file — `js/i18n.js` (mesin) dan `js/i18n-dict.js` (kamus). Teks baru diterjemahkan dengan menambahkan pasangan `["English", "Indonesia"]` di kamus. Untuk teks statis di HTML yang sudah berbahasa Indonesia, pakai bentuk tiga elemen `["English", "Indonesia", "teks lama di HTML"]`.
 
 ## Landing page (index.html)
 

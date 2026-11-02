@@ -1,4 +1,4 @@
-// GTPLAY v3.6 (GTPS Cloud status)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // GTPLAY CONFIGURATION
 // --------------------------------------------------

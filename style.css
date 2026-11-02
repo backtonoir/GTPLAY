@@ -1,4 +1,4 @@
-/* GTPLAY v3.6 (GTPS Cloud status) */
+/* GTPLAY v3.7 (discount, reviews, ID/EN) */
 /* ==================================================
    GTPLAY STORE — DESIGN SYSTEM
    --------------------------------------------------
@@ -3731,4 +3731,358 @@ textarea.input {
 
 .server-advanced > * + * {
   margin-top: 14px;
+}
+
+/* ==================================================
+   v3.7 — LANGUAGE SWITCH
+================================================== */
+
+.lang-switch {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.lang-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  opacity: 0.6;
+  transition: background-color 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.lang-btn:hover {
+  opacity: 1;
+  color: var(--text);
+}
+
+.lang-btn[aria-pressed="true"] {
+  opacity: 1;
+  color: var(--text);
+  background: var(--surface-3);
+}
+
+.flag {
+  width: 22px;
+  height: 15px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+@media (max-width: 600px) {
+  .lang-code,
+  .cart-label {
+    display: none;
+  }
+
+  .lang-btn {
+    padding: 4px 6px;
+  }
+
+  .header-inner {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .header-actions {
+    gap: 6px;
+  }
+
+  .cart-trigger {
+    padding: 8px 10px;
+  }
+}
+
+/* ==================================================
+   v3.7 — DISCOUNT
+================================================== */
+
+.discount-badge {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  padding: 3px 8px;
+  background: var(--red);
+  color: #fff;
+  clip-path: var(--notch);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 13px;
+}
+
+.price-stack {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.price-old {
+  color: var(--subtle);
+  font-size: 12px;
+  text-decoration-thickness: 1px;
+}
+
+.price-old.block {
+  display: block;
+}
+
+.product-price.is-sale,
+.is-sale {
+  color: #ff5a6c;
+}
+
+.product-card.on-sale {
+  border-color: rgba(229, 23, 47, 0.35);
+}
+
+.promo-ends {
+  margin: -8px 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--amber);
+}
+
+.savings-row span:last-child {
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.cart-line-price .price-old {
+  font-size: 12px;
+}
+
+/* ==================================================
+   v3.7 — REVIEWS
+================================================== */
+
+.stars {
+  display: inline-flex;
+  gap: 2px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.star {
+  color: var(--surface-3);
+}
+
+.star.on {
+  color: var(--amber);
+}
+
+.review-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+
+.review-card h3 {
+  font-size: 17px;
+}
+
+.review-card .field {
+  margin-bottom: 0;
+}
+
+.review-card .btn {
+  justify-self: start;
+}
+
+.star-input {
+  display: flex;
+  gap: 4px;
+}
+
+.star-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  font-size: 26px;
+  line-height: 1;
+  color: var(--surface-3);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  transition: color 0.12s, transform 0.12s;
+}
+
+.star-btn:hover {
+  transform: translateY(-1px);
+  color: #b07a1a;
+}
+
+.star-btn.on {
+  color: var(--amber);
+}
+
+.review-counter {
+  justify-self: end;
+}
+
+.review-comment {
+  color: #d4d4d8;
+  font-size: 14px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.review-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.review-summary strong {
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+
+.review-summary .stars {
+  font-size: 18px;
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+}
+
+.review-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.review-quote {
+  flex: 1;
+  font-size: 15px;
+  color: #e4e4e7;
+  overflow-wrap: anywhere;
+}
+
+.review-meta {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.review-meta strong {
+  font-family: var(--font-mono);
+}
+
+.review-verified {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #4ade80;
+}
+
+/* ==================================================
+   v3.7 — ADMIN
+================================================== */
+
+.discount-box {
+  padding: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.discount-box > .label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.sale-preview {
+  color: var(--text);
+}
+
+.price-cell {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.gen-list {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.gen-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 14px;
+  background: var(--bg);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.gen-status:empty {
+  display: none;
+}
+
+.admin-reviews {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-review {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-review-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.row-actions.start {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chips.no-margin {
+  margin: 0;
+}
+
+/* Layar sangat kecil: tombol bahasa pindah ke menu */
+.nav-lang {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .header-actions > .lang-switch {
+    display: none;
+  }
+
+  .nav-lang {
+    display: flex;
+    padding: 12px 12px 4px;
+  }
+
+  .nav-lang .lang-code {
+    display: inline;
+  }
 }

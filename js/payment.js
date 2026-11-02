@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // GTPLAY PAYMENT PAGE (payment.html?order=ID#k=CODE)
 // --------------------------------------------------
@@ -64,7 +64,9 @@
         h("tbody", {}, order.items.map(item =>
           h("tr", {},
             h("td", {}, item.name),
-            h("td", {}, formatRupiah(item.unitPrice)),
+            h("td", {},
+              item.listPrice && item.listPrice > item.unitPrice ? h("s", { class: "price-old block" }, formatRupiah(item.listPrice)) : null,
+              formatRupiah(item.unitPrice)),
             h("td", {}, `×${item.quantity}`),
             h("td", {}, formatRupiah(item.subtotal))
           )
@@ -142,7 +144,7 @@
     const wrap = h("div", { class: "countdown" },
       h("div", {},
         h("p", { class: "countdown-label", id: "countdownLabel" }, "Payment expires in"),
-        h("p", { class: "help" }, `Expires at ${new Date(order.expiresAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`)
+        h("p", { class: "help" }, GT.t("Expires at {time}", { time: new Date(order.expiresAt).toLocaleTimeString(GT.utils.locale(), { hour: "2-digit", minute: "2-digit", second: "2-digit" }) }))
       ),
       timeEl
     );
@@ -157,7 +159,7 @@
       if (left <= 0) {
         clearInterval(tickTimer);
         wrap.classList.add("expired");
-        $("#countdownLabel", wrap).textContent = "Payment expired";
+        $("#countdownLabel", wrap).textContent = GT.t("Payment expired");
         // Konfirmasi status dari data pesanan (bukan hanya dari timer).
         setTimeout(() => refresh(), 600);
       }
@@ -189,7 +191,7 @@
       h("h3", { class: "card-title instructions-title" }, "How to pay"),
       h("ol", { class: "instructions" },
         h("li", {}, "Open your banking or e-wallet app and choose Scan QRIS."),
-        h("li", {}, `Enter exactly ${formatRupiah(order.total)} and complete the payment.`),
+        h("li", {}, GT.t("Enter exactly {amount} and complete the payment.", { amount: formatRupiah(order.total) })),
         h("li", {}, "Take a screenshot of the payment receipt."),
         h("li", {}, "Upload it below and tap “I Have Paid” before the timer ends.")
       )
@@ -199,7 +201,7 @@
   function proofForm() {
     const preview = h("span", { class: "file-drop-icon", "aria-hidden": "true" }, "⬆");
     const nameEl = h("strong", {}, "Upload payment proof");
-    const hintEl = h("span", {}, `PNG, JPG or WEBP · max ${GT.config.MAX_PROOF_MB} MB`);
+    const hintEl = h("span", {}, GT.t("PNG, JPG or WEBP · max {mb} MB", { mb: GT.config.MAX_PROOF_MB }));
     const errorEl = h("p", { class: "error-text", role: "alert" });
 
     const input = h("input", {
@@ -233,12 +235,12 @@
       if (!file) return;
 
       if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
-        errorEl.textContent = "Please choose a PNG, JPG, or WEBP image.";
+        errorEl.textContent = GT.t("Please choose a PNG, JPG, or WEBP image.");
         input.value = "";
         return;
       }
       if (file.size > GT.config.MAX_PROOF_MB * 1024 * 1024) {
-        errorEl.textContent = `File is larger than ${GT.config.MAX_PROOF_MB} MB.`;
+        errorEl.textContent = GT.t("File is larger than {mb} MB.", { mb: GT.config.MAX_PROOF_MB });
         input.value = "";
         return;
       }
@@ -247,7 +249,7 @@
       proofPreviewUrl = URL.createObjectURL(file);
       preview.replaceChildren(h("img", { src: proofPreviewUrl, alt: "" }));
       nameEl.textContent = file.name;
-      hintEl.textContent = `${(file.size / 1024).toFixed(0)} KB · tap to change`;
+      hintEl.textContent = GT.t("{kb} KB · tap to change", { kb: (file.size / 1024).toFixed(0) });
     }
 
     const paidBtn = h("button", { type: "submit", class: "btn btn-primary btn-block btn-lg" }, "I Have Paid");
@@ -273,12 +275,12 @@
       onsubmit: async event => {
         event.preventDefault();
         if (!proofFile) {
-          errorEl.textContent = "Please attach your payment screenshot first.";
+          errorEl.textContent = GT.t("Please attach your payment screenshot first.");
           input.focus();
           return;
         }
         if (remainingMs() <= 0) {
-          errorEl.textContent = "This payment session has expired.";
+          errorEl.textContent = GT.t("This payment session has expired.");
           refresh();
           return;
         }
@@ -297,11 +299,11 @@
     busy = true;
     const original = button.textContent;
     button.disabled = true;
-    button.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), busyLabel);
+    button.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), GT.t(busyLabel));
 
     try {
       order = await action();
-      toast(successMessage, "success");
+      toast(GT.t(successMessage), "success");
       busy = false;
       render();
     } catch (error) {
@@ -343,6 +345,7 @@
         h("h2", { class: "card-title" }, "Order completed"),
         redeem || h("div", { class: "notice notice-ok" }, h("p", {}, "Your order is complete. Contact admin if you haven't received your redeem code.")),
         h("p", { class: "help" }, "Thanks for shopping at GTPLAY! Your redeem code stays available on Track Order."),
+        GT.reviewBlock(order, accessCode, updated => { order = updated; render(); }),
         h("a", { class: "btn btn-outline", href: "store.html#store" }, "Back to store")
       );
     } else if (s === "expired") {
@@ -364,7 +367,7 @@
         h("h2", { class: "card-title" }, s === "cancelled" ? "Order cancelled" : "Payment rejected"),
         h("div", { class: s === "rejected" ? "notice notice-danger" : "notice" },
           h("p", {}, s === "rejected"
-            ? (order.adminNote ? `Admin note: ${order.adminNote}` : "The admin could not verify this payment. Contact admin if you think this is a mistake.")
+            ? (order.adminNote ? GT.t("Admin note: {note}", { note: order.adminNote }) : GT.t("The admin could not verify this payment. Contact admin if you think this is a mistake."))
             : "This order was cancelled. No payment is needed.")
         ),
         h("div", { class: "modal-actions start" }, orderAgainButton(), s === "rejected" ? whatsappButton("Contact Admin") : null)
@@ -413,7 +416,7 @@
       const changed = !order || next.status !== order.status;
       order = next;
       if (!silent || changed) render();
-      if (silent && changed) toast(`Order status: ${GT.utils.STATUS[order.status].label}`, "info");
+      if (silent && changed) toast(GT.t("Order status: {status}", { status: GT.t(GT.utils.STATUS[order.status].label) }), "info");
     } catch (error) {
       if (silent) return;
       showError(error);

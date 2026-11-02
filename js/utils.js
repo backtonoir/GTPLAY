@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.7 (discount, reviews, ID/EN)
 // ==================================================
 // GTPLAY UTILITIES
 // --------------------------------------------------
@@ -9,6 +9,15 @@
 // ==================================================
 
 window.GT = window.GT || {};
+
+// Fallback bila js/i18n.js tidak dimuat (mis. admin.html):
+// hanya mengisi {variabel}, tanpa terjemahan.
+if (!GT.t) {
+  GT.t = function (text, vars) {
+    const value = String(text);
+    return vars ? value.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? String(vars[key]) : match)) : value;
+  };
+}
 
 GT.utils = (function () {
   // ------------------------------------------------
@@ -25,11 +34,16 @@ GT.utils = (function () {
     return rupiahFormatter.format(Number(amount) || 0);
   }
 
+  // Locale tanggal mengikuti bahasa yang dipilih (js/i18n.js).
+  function locale() {
+    return (GT.i18n && GT.i18n.locale) || "id-ID";
+  }
+
   function formatDateTime(value) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "-";
 
-    return date.toLocaleString("id-ID", {
+    return date.toLocaleString(locale(), {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -64,6 +78,11 @@ GT.utils = (function () {
   // dari pengguna / database tidak bisa menyisipkan HTML.
   // ------------------------------------------------
 
+  // Teks UI diterjemahkan otomatis lewat kamus di js/i18n.js
+  // (hanya bila teksnya persis ada di kamus).
+  const TRANSLATED_ATTRS = ["aria-label", "placeholder", "title", "alt"];
+  const tr = value => GT.t(value);
+
   function h(tag, props, ...children) {
     const element = document.createElement(tag);
 
@@ -77,7 +96,9 @@ GT.utils = (function () {
       } else if (key.startsWith("on") && typeof value === "function") {
         element.addEventListener(key.slice(2), value);
       } else if (key === "text") {
-        element.textContent = value;
+        element.textContent = tr(value);
+      } else if (TRANSLATED_ATTRS.includes(key) && typeof value === "string") {
+        element.setAttribute(key, tr(value));
       } else if (value === true) {
         element.setAttribute(key, "");
       } else {
@@ -87,7 +108,7 @@ GT.utils = (function () {
 
     children.flat(Infinity).forEach(child => {
       if (child === null || child === undefined || child === false) return;
-      element.append(child instanceof Node ? child : document.createTextNode(String(child)));
+      element.append(child instanceof Node ? child : document.createTextNode(typeof child === "string" ? tr(child) : String(child)));
     });
 
     return element;
@@ -230,12 +251,12 @@ GT.utils = (function () {
   function validateGrowId(value) {
     const growId = String(value || "").trim();
 
-    if (!growId) return { ok: false, message: "GrowID is required." };
+    if (!growId) return { ok: false, message: GT.t("GrowID is required.") };
 
     if (!GROWID_PATTERN.test(growId)) {
       return {
         ok: false,
-        message: "GrowID must be 3–24 characters: letters, numbers, or underscore."
+        message: GT.t("GrowID must be 3–24 characters: letters, numbers, or underscore.")
       };
     }
 
@@ -351,17 +372,17 @@ GT.utils = (function () {
     return h("button", {
       type: "button",
       class: className || "copy-button",
-      "aria-label": `Copy ${label}`,
+      "aria-label": `${tr("Copy")} ${tr(label)}`,
       onclick: async event => {
         const button = event.currentTarget;
         const ok = await copyText(value);
         if (ok) {
-          toast(`${label} copied.`, "success");
+          toast(GT.t("{label} copied.", { label: tr(label) }), "success");
           const original = button.textContent;
-          button.textContent = "Copied ✓";
+          button.textContent = tr("Copied ✓");
           setTimeout(() => { button.textContent = original; }, 1500);
         } else {
-          toast(`Couldn't copy — select the ${label.toLowerCase()} manually.`, "error");
+          toast(GT.t("Couldn't copy — select the {label} manually.", { label: tr(label).toLowerCase() }), "error");
         }
       }
     }, "Copy");
@@ -388,6 +409,7 @@ GT.utils = (function () {
   return {
     formatRupiah,
     formatDateTime,
+    locale,
     formatCountdown,
     escapeHTML,
     h,
