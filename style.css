@@ -4170,3 +4170,14 @@ textarea.input {
 .admin-review.is-new {
   border-color: var(--red);
 }
+
+.footer-feedback {
+  margin-top: 18px;
+  gap: 8px;
+}
+
+.footer-feedback svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
