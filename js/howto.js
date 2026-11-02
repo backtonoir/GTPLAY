@@ -6,14 +6,28 @@
 // ==================================================
 
 (function () {
-  const { $all, toast } = GT.utils;
+  const { $all, toast, h } = GT.utils;
   const guide = GT.config.LOGIN_GUIDE || {};
 
   const isSafeUrl = url => /^https:\/\//i.test(String(url || "").trim());
 
+  const DEFAULT_DOMAINS = ["www.growtopia1.com", "www.growtopia2.com"];
+
+  function hostsLines() {
+    const ip = String(guide.serverIp || "").trim();
+    const domains = Array.isArray(guide.hostsDomains) && guide.hostsDomains.length ? guide.hostsDomains : DEFAULT_DOMAINS;
+    return ip ? domains.map(domain => `${ip} ${String(domain).trim()}`) : [];
+  }
+
   function applyText() {
-    if (guide.serverIp) {
-      $all("[data-login-ip]").forEach(node => { node.textContent = guide.serverIp; });
+    const lines = hostsLines();
+    if (lines.length) {
+      $all("[data-hosts-lines]").forEach(node => {
+        node.replaceChildren(...lines.flatMap((line, i) => [
+          i ? h("br") : null,
+          h("code", {}, line)
+        ].filter(Boolean)));
+      });
     }
     $all("[data-login-text]").forEach(node => {
       const value = guide[node.dataset.loginText];
@@ -39,10 +53,6 @@
     });
   }
 
-  function hostsText() {
-    const ip = guide.serverIp || "";
-    return [`${ip} www.growtopia1.com`, `${ip} www.growtopia2.com`].join("\n");
-  }
 
   async function copy(button, value, label) {
     if (!value) {
@@ -62,7 +72,7 @@
 
   function bindCopyButtons() {
     $all("[data-copy-hosts]").forEach(button => {
-      button.addEventListener("click", () => copy(button, guide.serverIp ? hostsText() : "", "Hosts"));
+      button.addEventListener("click", () => copy(button, hostsLines().join("\n"), "Hosts"));
     });
     $all("[data-copy-login]").forEach(button => {
       const url = String(guide[button.dataset.copyLogin] || "").trim();
