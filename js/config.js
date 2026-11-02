@@ -1,4 +1,4 @@
-// GTPLAY v3.8 (clean URLs)
+// GTPLAY v3.9 (GoPay & BCA)
 // ==================================================
 // GTPLAY CONFIGURATION
 // --------------------------------------------------
@@ -16,6 +16,38 @@ GT.config = Object.freeze({
 
   // Lokasi gambar QRIS statis.
   QRIS_IMAGE: "images/qris.png",
+
+  // ------------------------------------------------
+  // METODE PEMBAYARAN
+  // --------------------------------------------------
+  // Pembeli memilih salah satu metode lalu upload bukti.
+  // Verifikasi tetap MANUAL oleh admin (tidak otomatis).
+  //
+  // ISI DENGAN DATA KAMU SENDIRI — jangan pakai contoh.
+  // Metode akan tampil HANYA jika datanya diisi:
+  //   • qris  tampil jika ada gambar QRIS (QRIS_IMAGE).
+  //   • gopay tampil jika "number" diisi.
+  //   • bca   tampil jika "number" diisi.
+  // Kosongkan "number" untuk menyembunyikan metode itu.
+  PAYMENT_METHODS: {
+    qris: {
+      label: "QRIS",
+      note: "Scan dengan aplikasi bank atau e-wallet apa pun (GoPay, OVO, DANA, ShopeePay, m-banking)."
+    },
+    gopay: {
+      label: "GoPay",
+      number: "",          // nomor GoPay (nomor HP), mis. "0812-3456-7890"
+      name: "",            // nama akun GoPay
+      note: "Kirim GoPay ke nomor di atas sesuai nominal, lalu upload bukti transfer."
+    },
+    bca: {
+      label: "Bank BCA",
+      bank: "BCA",
+      number: "",          // nomor rekening BCA
+      name: "",            // nama pemilik rekening
+      note: "Transfer ke rekening BCA di atas sesuai nominal, lalu upload bukti transfer."
+    }
+  },
 
   // Durasi sesi pembayaran (menit). Untuk mode Supabase, nilai yang
   // berlaku adalah yang ada di database (lihat supabase/schema.sql).

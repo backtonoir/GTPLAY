@@ -93,6 +93,12 @@ Semua di **`js/config.js`**.
 
 - **WhatsApp admin** — `WHATSAPP_NUMBER: "6283829870348"` (format internasional, tanpa `+`/spasi). Link WhatsApp statis di HTML (footer, FAQ, maintenance) memakai nomor yang sama — cari `wa.me/` jika nomor berubah.
 - **QRIS** — taruh gambar di `images/qris.png`, atau ubah `QRIS_IMAGE`. Gunakan PNG tajam minimal 600×600 px.
+- **Metode pembayaran (QRIS / GoPay / BCA)** — di `PAYMENT_METHODS`. Pembeli memilih metode di halaman pembayaran lalu upload bukti; verifikasi tetap **manual** oleh admin. **Isi dengan data kamu sendiri** — jangan pakai contoh. Tiap metode tampil hanya jika datanya diisi:
+  - `qris` — tampil selama ada `QRIS_IMAGE`.
+  - `gopay` — isi `number` (nomor GoPay/HP) dan `name`. Kosongkan `number` untuk menyembunyikan.
+  - `bca` — isi `number` (nomor rekening) dan `name`. Kosongkan `number` untuk menyembunyikan.
+
+  Metode yang dipilih pembeli ikut tercatat di pesanan (terlihat di detail order Admin) dan di pesan WhatsApp konfirmasi. **Jalankan ulang `supabase/schema.sql`** agar kolom `payment_method` ditambahkan (aman diulang).
 - **Sosial media** — isi `SOCIAL_LINKS` (instagram, tiktok, discord, youtube). Link kosong tidak ditampilkan.
 - **Durasi pembayaran** — `PAYMENT_WINDOW_MINUTES` (demo). Di Supabase ubah `c_window` di fungsi `create_order` pada `supabase/schema.sql`.
 - **Aturan GrowID** — `GROWID_PATTERN` di `js/utils.js` dan regex yang sama di `schema.sql` (default: 3–24 huruf/angka/underscore).

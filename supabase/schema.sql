@@ -74,6 +74,10 @@ create table if not exists public.orders (
 -- Upgrade untuk database yang dibuat sebelum fitur redeem code.
 alter table public.orders add column if not exists redeem_code text
   check (redeem_code is null or length(redeem_code) <= 2000);
+-- Metode pembayaran yang dipilih pembeli (qris / gopay / bca). Hanya catatan
+-- untuk admin — verifikasi tetap manual dari bukti pembayaran.
+alter table public.orders add column if not exists payment_method text
+  check (payment_method is null or payment_method ~ '^[a-z0-9_-]{1,20}$');
 
 create index if not exists orders_status_created_idx on public.orders (status, created_at desc);
 create index if not exists orders_created_idx on public.orders (created_at desc);
@@ -301,6 +305,7 @@ as $$
     'updatedAt', o.updated_at,
     'expiresAt', o.expires_at,
     'proofSubmittedAt', o.proof_submitted_at,
+    'paymentMethod', o.payment_method,
     'adminNote', case when p_include_private or o.status = 'rejected' then coalesce(o.admin_note, '') else '' end,
     'proofPath', case when p_include_private then o.proof_path else null end,
     -- Pembeli baru bisa melihat redeem code setelah pesanan Completed.
@@ -734,7 +739,10 @@ begin
   return public.gt_order_json(v_order.id, false);
 end $$;
 
-create or replace function public.submit_payment(p_order_id text, p_access_code text, p_proof_path text)
+-- Tanda tangan lama (3 argumen) dihapus agar tidak ada dua versi fungsi.
+drop function if exists public.submit_payment(text, text, text);
+
+create or replace function public.submit_payment(p_order_id text, p_access_code text, p_proof_path text, p_method text default null)
 returns jsonb
 language plpgsql
 security definer
@@ -742,7 +750,9 @@ set search_path = public, pg_temp
 as $$
 declare
   v_order public.orders;
+  v_method text := lower(btrim(coalesce(p_method, '')));
 begin
+  if v_method !~ '^[a-z0-9_-]{1,20}$' then v_method := null; end if;
   perform public.expire_stale_orders();
   v_order := public.gt_owned_order(p_order_id, p_access_code);
 
@@ -767,6 +777,7 @@ begin
     set status = 'payment_submitted',
         proof_path = p_proof_path,
         proof_submitted_at = now(),
+        payment_method = coalesce(v_method, payment_method),
         updated_at = now()
     where id = v_order.id;
 
@@ -1239,7 +1250,7 @@ grant execute on function public.admin_delete_review(bigint)          to authent
 
 revoke all on function public.create_order(text, jsonb)               from public;
 revoke all on function public.get_order(text, text)                   from public;
-revoke all on function public.submit_payment(text, text, text)        from public;
+revoke all on function public.submit_payment(text, text, text, text)  from public;
 revoke all on function public.cancel_order(text, text)                from public;
 revoke all on function public.can_upload_proof(text)                  from public;
 revoke all on function public.is_admin()                              from public;
@@ -1250,7 +1261,7 @@ revoke all on function public.admin_set_redeem_code(text, text)       from publi
 
 grant execute on function public.create_order(text, jsonb)            to anon, authenticated;
 grant execute on function public.get_order(text, text)                to anon, authenticated;
-grant execute on function public.submit_payment(text, text, text)     to anon, authenticated;
+grant execute on function public.submit_payment(text, text, text, text) to anon, authenticated;
 grant execute on function public.cancel_order(text, text)             to anon, authenticated;
 grant execute on function public.can_upload_proof(text)               to anon, authenticated;
 grant execute on function public.is_admin()                           to anon, authenticated;

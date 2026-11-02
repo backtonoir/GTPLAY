@@ -1,4 +1,4 @@
-// GTPLAY v3.8 (clean URLs)
+// GTPLAY v3.9 (GoPay & BCA)
 // ==================================================
 // KAMUS TERJEMAHAN — [English, Indonesia] atau
 // [English, Indonesia, teks lama di HTML].
@@ -345,6 +345,19 @@ GT.i18nPairs = [
   ["Unit", "Satuan"],
   ["Save your Order ID and access code — you need both to track this order from another device.", "Simpan Order ID dan kode akses — keduanya dibutuhkan untuk melacak pesanan ini dari perangkat lain."],
   ["Order again", "Pesan lagi"],
+  ["Choose payment method", "Pilih metode pembayaran"],
+  ["Choose a payment method above.", "Pilih metode pembayaran di atas."],
+  ["Pay exactly {amount} with your chosen method (scan the QRIS, or transfer to the number shown).", "Bayar tepat {amount} dengan metode pilihanmu (scan QRIS, atau transfer ke nomor yang tampil)."],
+  ["Account number", "Nomor rekening"],
+  ["Account name", "Nama pemilik"],
+  ["Bank", "Bank"],
+  ["{label} number", "Nomor {label}"],
+  ["Amount", "Nominal"],
+  ["Payment method", "Metode pembayaran"],
+  ["No payment method is set up yet. Please contact admin.", "Metode pembayaran belum diatur. Silakan hubungi admin."],
+  ["Scan with any bank or e-wallet app (GoPay, OVO, DANA, ShopeePay, mobile banking).", "Scan dengan aplikasi bank atau e-wallet apa pun (GoPay, OVO, DANA, ShopeePay, m-banking).", "Scan dengan aplikasi bank atau e-wallet apa pun (GoPay, OVO, DANA, ShopeePay, m-banking)."],
+  ["Send GoPay to the number above for the exact amount, then upload the transfer proof.", "Kirim GoPay ke nomor di atas sesuai nominal, lalu upload bukti transfer.", "Kirim GoPay ke nomor di atas sesuai nominal, lalu upload bukti transfer."],
+  ["Transfer to the BCA account above for the exact amount, then upload the transfer proof.", "Transfer ke rekening BCA di atas sesuai nominal, lalu upload bukti transfer.", "Transfer ke rekening BCA di atas sesuai nominal, lalu upload bukti transfer."],
   ["Payment expires in", "Pembayaran berakhir dalam"],
   ["Expires at {time}", "Berakhir pukul {time}"],
   ["Payment expired", "Waktu pembayaran habis"],

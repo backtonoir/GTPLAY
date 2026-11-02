@@ -1,4 +1,4 @@
-// GTPLAY v3.8 (clean URLs)
+// GTPLAY v3.9 (GoPay & BCA)
 // ==================================================
 // GTPLAY UTILITIES
 // --------------------------------------------------
@@ -289,6 +289,35 @@ GT.utils = (function () {
     link.remove();
   }
 
+  // ------------------------------------------------
+  // METODE PEMBAYARAN (dibaca dari GT.config.PAYMENT_METHODS)
+  // ------------------------------------------------
+
+  function paymentMethods() {
+    const cfg = (GT.config && GT.config.PAYMENT_METHODS) || {};
+    const out = [];
+    const qris = cfg.qris || {};
+    if (GT.config.QRIS_IMAGE) {
+      out.push({ id: "qris", kind: "qris", label: qris.label || "QRIS", image: GT.config.QRIS_IMAGE, note: qris.note || "" });
+    }
+    const gopay = cfg.gopay || {};
+    if (String(gopay.number || "").trim()) {
+      out.push({ id: "gopay", kind: "ewallet", label: gopay.label || "GoPay", number: String(gopay.number).trim(), name: String(gopay.name || "").trim(), note: gopay.note || "" });
+    }
+    const bca = cfg.bca || {};
+    if (String(bca.number || "").trim()) {
+      out.push({ id: "bca", kind: "bank", label: bca.label || "Bank BCA", bank: bca.bank || "BCA", number: String(bca.number).trim(), name: String(bca.name || "").trim(), note: bca.note || "" });
+    }
+    return out;
+  }
+
+  function paymentMethodLabel(id) {
+    const found = paymentMethods().find(m => m.id === id);
+    if (found) return found.label;
+    const labels = { qris: "QRIS", gopay: "GoPay", bca: "Bank BCA" };
+    return labels[id] || id || "";
+  }
+
   function whatsappURL(message) {
     return `https://wa.me/${GT.config.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
   }
@@ -426,6 +455,8 @@ GT.utils = (function () {
     randomCode,
     openExternal,
     whatsappURL,
+    paymentMethods,
+    paymentMethodLabel,
     lockScroll,
     unlockScroll,
     confirmDialog,

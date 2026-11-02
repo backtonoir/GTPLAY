@@ -1,4 +1,4 @@
-/* GTPLAY v3.8 (clean URLs) */
+/* GTPLAY v3.9 (GoPay & BCA payment methods) */
 /* ==================================================
    GTPLAY STORE — DESIGN SYSTEM
    --------------------------------------------------
@@ -4085,4 +4085,101 @@ textarea.input {
   .nav-lang .lang-code {
     display: inline;
   }
+}
+
+/* ==================================================
+   v3.9 — METODE PEMBAYARAN (QRIS / GoPay / BCA)
+================================================== */
+
+.pay-choose {
+  margin: 18px 0 12px;
+}
+
+.pay-methods {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.pay-method-chip {
+  flex: 1 1 auto;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 14px;
+  transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.pay-method-chip:hover {
+  color: var(--text);
+}
+
+.pay-method-chip[aria-pressed="true"] {
+  background: var(--red);
+  color: #fff;
+  box-shadow: none;
+}
+
+.pay-method-panel {
+  margin-bottom: 4px;
+}
+
+.pay-note {
+  margin-top: 12px;
+}
+
+.pay-account {
+  display: grid;
+  gap: 2px;
+  padding: 6px 2px;
+}
+
+.pay-account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pay-account-row:last-child {
+  border-bottom: 0;
+}
+
+.pay-account-label {
+  color: var(--muted);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.pay-account-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  text-align: right;
+}
+
+.pay-account-value strong {
+  font-size: clamp(15px, 2.6vw, 19px);
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.pay-amount {
+  margin-top: 16px;
+}
+
+.pay-amount > div {
+  display: flex;
+  flex-direction: column;
 }

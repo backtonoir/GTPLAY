@@ -1,4 +1,4 @@
-// GTPLAY v3.8 (clean URLs)
+// GTPLAY v3.9 (GoPay & BCA)
 // ==================================================
 // GTPLAY TRACK ORDER PAGE (track.html)
 // --------------------------------------------------

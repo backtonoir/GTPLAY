@@ -1,4 +1,4 @@
-// GTPLAY v3.8 (clean URLs)
+// GTPLAY v3.9 (GoPay & BCA)
 // ==================================================
 // GTPLAY ADMIN DASHBOARD (admin.html)
 // --------------------------------------------------
@@ -582,7 +582,8 @@
         row("GrowID", order.growId),
         row("Created", formatDateTime(order.createdAt)),
         row("Payment window ends", formatDateTime(order.expiresAt)),
-        order.proofSubmittedAt ? row("Proof submitted", formatDateTime(order.proofSubmittedAt)) : null
+        order.proofSubmittedAt ? row("Proof submitted", formatDateTime(order.proofSubmittedAt)) : null,
+        order.paymentMethod ? row("Payment method", GT.utils.paymentMethodLabel(order.paymentMethod)) : null
       ),
       h("table", { class: "line-table" },
         h("thead", {}, h("tr", {}, h("th", {}, "Item"), h("th", {}, "Unit"), h("th", {}, "Qty"), h("th", {}, "Subtotal"))),

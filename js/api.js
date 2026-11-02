@@ -1,4 +1,4 @@
-// GTPLAY v3.8 (clean URLs)
+// GTPLAY v3.9 (GoPay & BCA)
 // ==================================================
 // GTPLAY DATA LAYER
 // --------------------------------------------------
@@ -538,7 +538,7 @@ GT.api = (function () {
         return publicOrder(findOwned(orderId, accessCode).order);
       },
 
-      async submitPayment(orderId, accessCode, file) {
+      async submitPayment(orderId, accessCode, file, method) {
         validateProof(file);
         const { orders, order } = findOwned(orderId, accessCode);
 
@@ -548,6 +548,8 @@ GT.api = (function () {
         // Demo: gambar TIDAK disimpan (localStorage bukan tempat file
         // pembayaran). Hanya nama file sebagai catatan.
         order.proofName = file.name;
+        const m = String(method || "").toLowerCase();
+        if (/^[a-z0-9_-]{1,20}$/.test(m)) order.paymentMethod = m;
         order.proofSubmittedAt = new Date().toISOString();
         pushEvent(order, "payment_submitted", "Payment proof submitted.", "customer");
         saveOrders(orders);
@@ -1032,7 +1034,7 @@ GT.api = (function () {
         }));
       },
 
-      async submitPayment(orderId, accessCode, file) {
+      async submitPayment(orderId, accessCode, file, method) {
         validateProof(file);
 
         // Policy storage hanya mengizinkan upload ke folder milik
@@ -1057,7 +1059,8 @@ GT.api = (function () {
         return mapOrder(await rpc("submit_payment", {
           p_order_id: orderId,
           p_access_code: accessCode,
-          p_proof_path: path
+          p_proof_path: path,
+          p_method: method || null
         }));
       },
 

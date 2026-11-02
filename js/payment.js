@@ -1,4 +1,4 @@
-// GTPLAY v3.8 (clean URLs)
+// GTPLAY v3.9 (GoPay & BCA)
 // ==================================================
 // GTPLAY PAYMENT PAGE (payment.html?order=ID#k=CODE)
 // --------------------------------------------------
@@ -24,6 +24,7 @@
   let proofFile = null;
   let proofPreviewUrl = null;
   let busy = false;
+  let selectedMethod = null;
 
   // ------------------------------------------------
   // ACCESS
@@ -54,6 +55,7 @@
       infoRow("GrowID", h("strong", {}, order.growId)),
       infoRow("Access code", h("span", { class: "copy-row" }, h("strong", { class: "access-code" }, accessCode), copyButton(accessCode, "Access code"))),
       infoRow("Created", formatDateTime(order.createdAt)),
+      order.paymentMethod ? infoRow("Payment method", GT.utils.paymentMethodLabel(order.paymentMethod)) : null,
       h("table", { class: "line-table order-lines" },
         h("thead", {}, h("tr", {},
           h("th", { scope: "col" }, "Item"),
@@ -92,7 +94,7 @@
       `Total Item: ${order.items.reduce((sum, item) => sum + item.quantity, 0)}`,
       `Total Pembayaran: ${formatRupiah(order.total)}`,
       "",
-      "Saya sudah melakukan pembayaran melalui QRIS.",
+      `Saya sudah melakukan pembayaran melalui ${GT.utils.paymentMethodLabel(selectedMethod || (order && order.paymentMethod) || "qris")}.`,
       GT.api.isDemo
         ? "Berikut saya lampirkan bukti pembayarannya."
         : "Bukti pembayaran sudah saya upload di website.",
@@ -171,31 +173,93 @@
     return container;
   }
 
-  function qrisCard() {
-    return h("div", { class: "card" },
-      countdownBlock(),
-      h("div", { class: "qris-frame" },
-        GT.utils.imageWithFallback({
-          src: GT.config.QRIS_IMAGE,
-          alt: `QRIS ${GT.config.STORE_NAME}`,
-          fallback: "QRIS image not found. Please contact admin.",
-          className: "qris-media",
-          eager: true
-        }),
-        h("p", { class: "qris-caption" }, "Scan with any banking or e-wallet app that supports QRIS."),
-        h("div", { class: "qris-amount" },
-          h("span", {}, "Pay exactly"),
-          h("strong", {}, formatRupiah(order.total))
-        )
+  function accountRow(label, value, copyable) {
+    return h("div", { class: "pay-account-row" },
+      h("span", { class: "pay-account-label" }, label),
+      h("span", { class: "pay-account-value" },
+        h("strong", { class: "mono" }, value),
+        copyable ? GT.utils.copyButton(value, label) : null
+      )
+    );
+  }
+
+  function methodPanel(method) {
+    if (!method) {
+      return h("div", { class: "notice notice-warn" }, h("p", {}, "No payment method is set up yet. Please contact admin."));
+    }
+    if (method.kind === "qris") {
+      return h("div", { class: "pay-method-body" },
+        h("div", { class: "qris-frame" },
+          GT.utils.imageWithFallback({
+            src: method.image,
+            alt: `QRIS ${GT.config.STORE_NAME}`,
+            fallback: "QRIS image not found. Please contact admin.",
+            className: "qris-media",
+            eager: true
+          })
+        ),
+        method.note ? h("p", { class: "qris-caption pay-note" }, method.note) : null
+      );
+    }
+    const numberLabel = method.kind === "bank" ? "Account number" : `${method.label} number`;
+    return h("div", { class: "pay-method-body" },
+      h("div", { class: "pay-account" },
+        method.kind === "bank" && method.bank ? accountRow("Bank", method.bank) : null,
+        accountRow(numberLabel, method.number, true),
+        method.name ? accountRow("Account name", method.name) : null
       ),
+      method.note ? h("p", { class: "qris-caption pay-note" }, method.note) : null
+    );
+  }
+
+  function paymentCard() {
+    const methods = GT.utils.paymentMethods();
+    if (!selectedMethod || !methods.some(m => m.id === selectedMethod)) {
+      selectedMethod = methods.length ? methods[0].id : null;
+    }
+
+    const panelSlot = h("div", { class: "pay-method-panel" });
+
+    const chips = methods.length > 1
+      ? h("div", { class: "pay-methods", role: "group", "aria-label": "Payment method" },
+          methods.map(m => h("button", {
+            type: "button",
+            class: "pay-method-chip",
+            dataset: { method: m.id },
+            "aria-pressed": String(m.id === selectedMethod),
+            onclick: () => { selectedMethod = m.id; paint(); }
+          }, m.label)))
+      : null;
+
+    function paint() {
+      const method = methods.find(m => m.id === selectedMethod) || null;
+      if (chips) chips.querySelectorAll("[data-method]").forEach(btn =>
+        btn.setAttribute("aria-pressed", String(btn.dataset.method === selectedMethod)));
+      panelSlot.replaceChildren(methodPanel(method));
+    }
+
+    const amount = h("div", { class: "qris-amount pay-amount" },
+      h("div", {}, h("span", {}, "Pay exactly"), h("strong", {}, formatRupiah(order.total))),
+      GT.utils.copyButton(String(order.total), "Amount")
+    );
+
+    const card = h("div", { class: "card" },
+      countdownBlock(),
+      methods.length > 1 ? h("h2", { class: "card-title pay-choose" }, "Choose payment method") : null,
+      chips,
+      panelSlot,
+      amount,
       h("h3", { class: "card-title instructions-title" }, "How to pay"),
       h("ol", { class: "instructions" },
-        h("li", {}, "Open your banking or e-wallet app and choose Scan QRIS."),
-        h("li", {}, GT.t("Enter exactly {amount} and complete the payment.", { amount: formatRupiah(order.total) })),
+        methods.length > 1 ? h("li", {}, "Choose a payment method above.") : null,
+        h("li", {}, GT.t("Pay exactly {amount} with your chosen method (scan the QRIS, or transfer to the number shown).", { amount: formatRupiah(order.total) })),
         h("li", {}, "Take a screenshot of the payment receipt."),
         h("li", {}, "Upload it below and tap “I Have Paid” before the timer ends.")
       )
     );
+
+    paint();
+    return card;
   }
 
   function proofForm() {
@@ -284,7 +348,7 @@
           refresh();
           return;
         }
-        await runAction(paidBtn, "Submitting…", () => GT.api.submitPayment(order.id, accessCode, proofFile), "Payment proof submitted.");
+        await runAction(paidBtn, "Submitting…", () => GT.api.submitPayment(order.id, accessCode, proofFile, selectedMethod), "Payment proof submitted.");
       }
     },
       h("h2", { class: "card-title" }, "Confirm your payment"),
@@ -390,7 +454,7 @@
     if (order.status === "pending_payment") {
       root.replaceChildren(
         h("div", { class: "pay-grid" },
-          qrisCard(),
+          paymentCard(),
           h("div", { class: "stack" }, orderCard(), proofForm())
         )
       );
