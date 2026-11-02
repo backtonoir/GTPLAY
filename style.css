@@ -4237,3 +4237,123 @@ textarea.input {
   text-decoration: none;
   cursor: not-allowed;
 }
+
+.guide-card-wide {
+  grid-column: 1 / -1;
+}
+
+.login-note {
+  margin-top: 14px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.login-note-warn {
+  color: var(--amber);
+  border-color: rgba(245, 165, 36, 0.35);
+  background: rgba(245, 165, 36, 0.08);
+}
+
+.login-path {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.login-copy {
+  margin-top: 10px;
+}
+
+.login-link-btn.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.cert-box {
+  margin-bottom: 18px;
+  border: 1px solid rgba(245, 165, 36, 0.35);
+  border-radius: var(--radius-sm);
+  background: rgba(245, 165, 36, 0.06);
+}
+
+.cert-box > summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.cert-box > summary::-webkit-details-marker {
+  display: none;
+}
+
+.cert-box > summary::after {
+  content: "+";
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 18px;
+  color: var(--amber);
+  transition: transform 0.2s var(--ease);
+}
+
+.cert-box[open] > summary::after {
+  transform: rotate(45deg);
+}
+
+.cert-warn-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--amber);
+  margin-top: 1px;
+}
+
+.cert-summary-text {
+  display: grid;
+  gap: 4px;
+}
+
+.cert-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--amber);
+}
+
+.cert-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border: 1px solid rgba(245, 165, 36, 0.5);
+  border-radius: 999px;
+}
+
+.cert-sub {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.cert-body {
+  padding: 0 16px 16px;
+  border-top: 1px solid rgba(245, 165, 36, 0.2);
+}
+
+.cert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}

@@ -72,6 +72,7 @@ GT.config = Object.freeze({
   //     Android / Windows dari Admin → Downloads.
   LOGIN_GUIDE: {
     serverIp: "103.126.117.167",                  // IP untuk file hosts (Windows & Mac)
+    certificateUrl: "",                           // link sertifikat GTPS Cloud (Windows, Growtopia v5.59+)
 
     // Link tombol download
     gtplayApk: "",                                // GTPLAY APK (Android)

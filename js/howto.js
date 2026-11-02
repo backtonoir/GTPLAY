@@ -6,7 +6,7 @@
 // ==================================================
 
 (function () {
-  const { $all } = GT.utils;
+  const { $all, toast } = GT.utils;
   const guide = GT.config.LOGIN_GUIDE || {};
 
   const isSafeUrl = url => /^https:\/\//i.test(String(url || "").trim());
@@ -39,8 +39,44 @@
     });
   }
 
+  function hostsText() {
+    const ip = guide.serverIp || "";
+    return [`${ip} www.growtopia1.com`, `${ip} www.growtopia2.com`].join("\n");
+  }
+
+  async function copy(button, value, label) {
+    if (!value) {
+      toast(`${label} belum tersedia.`, "error");
+      return;
+    }
+    const ok = await GT.utils.copyText(value);
+    if (!ok) {
+      toast(`Gagal menyalin ${label}. Salin manual.`, "error");
+      return;
+    }
+    toast(`${label} disalin.`, "success");
+    const original = button.textContent;
+    button.textContent = "Copied ✓";
+    setTimeout(() => { button.textContent = original; }, 1500);
+  }
+
+  function bindCopyButtons() {
+    $all("[data-copy-hosts]").forEach(button => {
+      button.addEventListener("click", () => copy(button, guide.serverIp ? hostsText() : "", "Hosts"));
+    });
+    $all("[data-copy-login]").forEach(button => {
+      const url = String(guide[button.dataset.copyLogin] || "").trim();
+      if (!isSafeUrl(url)) {
+        button.disabled = true;
+        button.title = "Link belum tersedia";
+      }
+      button.addEventListener("click", () => copy(button, isSafeUrl(url) ? url : "", button.dataset.copyLabel || "Link"));
+    });
+  }
+
   applyText();
   applyLinks({});
+  bindCopyButtons();
 
   // GTPLAY APK / Installer kosong di config → pakai link dari Admin → Downloads.
   GT.api.getStoreStatus()
