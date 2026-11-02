@@ -45,6 +45,8 @@ GTPLAY/
 ├── style.css           Seluruh desain (satu file)
 ├── favicon.svg
 ├── vercel.json         Security headers (CSP, dll.)
+├── api/
+│   └── server-status.js  Status server dari API GTPS Cloud (Vercel function)
 ├── js/
 │   ├── config.js       ← KONFIGURASI (WhatsApp, QRIS, Supabase, sosial media)
 │   ├── utils.js        Format Rupiah, DOM builder aman, toast, status
@@ -126,7 +128,8 @@ Semua di **`js/config.js`**.
 
 Halaman utama sekarang landing page; toko pindah ke `store.html`.
 
-- **Status server, player online, world aktif, peak** — script Lua di server game mengirim data ke Supabase setiap ±60 detik. Admin → **Server** → **Generate token & script** → salin script Lua yang muncul ke script Lua server di GTPS Cloud → restart/reload. Jika server berhenti mengirim selama 3 menit, landing page menampilkan Offline. Token bisa diganti kapan saja (token lama langsung tidak berlaku).
+- **Status server, player online, world aktif** — dibaca otomatis dari API publik GTPS Cloud (`https://api.gtps.cloud/api/server/public/<ID>`) lewat Vercel function `api/server-status.js`, lalu di-cache 30 detik. Tidak perlu script Lua. Server ID default `6986`; untuk menggantinya isi environment variable `GTPS_SERVER_ID` di Vercel → Settings → Environment Variables lalu redeploy. Function hanya meneruskan status, jumlah player, world, dan uptime — IP/port server tidak dikirim ke browser. Di Live Server lokal endpoint ini tidak ada, jadi status tampil "Unavailable" (normal).
+- **Peak online (opsional)** — Admin → Server → *Advanced — Lua stats reporter*: generate token & script Lua jika ingin mencatat peak online.
 - **Harga Blue Gem Lock** — Admin → **BGL Price**: isi tanggal + harga (Rupiah). Satu harga per tanggal; grafik muncul setelah ada minimal 2 data.
 - **Download** — Admin → **Downloads**: isi link Windows / Android (wajib `https://`). Link kosong tampil "Coming soon" (iOS & macOS).
 - **Pengumuman** — Admin → **Announcements**: tambah, edit, hapus, atau simpan sebagai draft. Tampil di landing page (3 terbaru) dan `announcement.html`.

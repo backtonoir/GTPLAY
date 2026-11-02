@@ -1,4 +1,4 @@
-// GTPLAY v3.5.1 (lua worlds fix)
+// GTPLAY v3.6 (GTPS Cloud status)
 // ==================================================
 // GTPLAY DATA LAYER
 // --------------------------------------------------
@@ -114,9 +114,9 @@ GT.api = (function () {
   // SERVER STATUS (GTPS Cloud)
   // --------------------------------------------------
   // Website membaca JSON ternormalisasi dari SERVER_STATUS_URL:
-  //   { "online": true, "players": 12, "peak": 40, "worlds": null, "uptime": "3h 2m" }
+  //   { "online": true, "players": 12, "worlds": 3, "maxPlayers": 8000, "uptime": "3h 2m" }
   // Default: /api/server-status (Vercel function di folder api/)
-  // yang mengambil data dari API GTPS Cloud.
+  // yang mengambil data dari API publik GTPS Cloud.
   // ------------------------------------------------
 
   async function getServerStatus(statsFromBackend) {
@@ -133,15 +133,20 @@ GT.api = (function () {
       const data = await response.json();
       const toNumber = value => (value === null || value === undefined || value === "" ? null : (Number.isFinite(Number(value)) ? Number(value) : null));
 
-      // Mendukung JSON dari /api/server-status maupun format asli GTPS Cloud.
-      const rawStatus = data.server_status !== undefined ? String(data.server_status).toLowerCase() === "online" : data.online;
+      // Mendukung JSON dari /api/server-status maupun format asli GTPS Cloud
+      // ({ state: { server_status: 1, players_online, active_worlds } }).
+      const src = data && typeof data.state === "object" && data.state ? data.state : data;
+      const rawStatus = src.server_status !== undefined
+        ? (Number(src.server_status) === 1 || String(src.server_status).toLowerCase() === "online")
+        : src.online;
 
       return {
         configured: true,
         online: Boolean(rawStatus),
-        players: toNumber(data.players ?? data.players_online),
-        peak: toNumber(data.peak ?? data.record_online),
-        worlds: toNumber(data.worlds),
+        players: toNumber(src.players ?? src.players_online),
+        peak: toNumber(src.peak ?? src.record_online),
+        worlds: toNumber(src.worlds ?? src.active_worlds),
+        maxPlayers: toNumber(src.maxPlayers),
         uptime: typeof data.uptime === "string" ? data.uptime : null,
         updatedAt: data.updatedAt || new Date().toISOString()
       };

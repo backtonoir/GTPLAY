@@ -1,4 +1,4 @@
-// GTPLAY v3.5.1 (lua worlds fix)
+// GTPLAY v3.6 (GTPS Cloud status)
 // ==================================================
 // GTPLAY ADMIN DASHBOARD (admin.html)
 // --------------------------------------------------
@@ -1188,7 +1188,7 @@
   }
 
   // ------------------------------------------------
-  // SERVER (stats dikirim script Lua)
+  // SERVER (status GTPS Cloud + Lua opsional)
   // ------------------------------------------------
 
   function luaScript(token) {
@@ -1276,17 +1276,55 @@
   }
 
   async function renderServer(panel) {
+    loadingPanel(panel);
+
+    // 1) Status langsung dari API publik GTPS Cloud (via /api/server-status).
+    const live = await GT.api.getServerStatus();
+    const has = value => value !== null && value !== undefined;
+    const usesGtps = Boolean(GT.config.SERVER_STATUS_URL);
+
+    let liveSection;
+    if (!usesGtps) {
+      liveSection = null;
+    } else if (live.error) {
+      liveSection = h("div", { class: "notice notice-warn" }, h("p", {},
+        "Couldn't reach the GTPS Cloud status API. Check that the api/ folder is deployed on Vercel and GTPS_SERVER_ID is correct (default 6986)."));
+    } else {
+      liveSection = h("div", { class: "stat-grid" },
+        statCard("Server", live.online ? "Online" : "Offline", live.uptime ? `Uptime ${live.uptime}` : "From GTPS Cloud"),
+        statCard("Players online", has(live.players) ? String(live.players) : "—", has(live.maxPlayers) ? `Max ${live.maxPlayers}` : ""),
+        statCard("Active worlds", has(live.worlds) ? String(live.worlds) : "—", "Worlds currently loaded"),
+        h("div", { class: "stat stat-actions" },
+          h("button", { type: "button", class: "btn btn-outline btn-sm", onclick: () => renderDashboard() }, "↻ Refresh"),
+          h("p", { class: "help" }, live.updatedAt ? `Checked ${formatDateTime(live.updatedAt)}` : "")
+        )
+      );
+    }
+
+    const intro = h("section", { class: "card" },
+      h("h2", { class: "card-title" }, "Live server status"),
+      h("p", { class: "muted" }, usesGtps
+        ? "Status, players online, and active worlds are read automatically from the GTPS Cloud public API every minute. No Lua script is needed."
+        : "SERVER_STATUS_URL in js/config.js is empty, so the landing page uses stats sent by the Lua script below.")
+    );
+
+    // 2) Advanced: reporter Lua lama (opsional, untuk peak online).
+    const advanced = h("details", { class: "card server-advanced" },
+      h("summary", { class: "card-title" }, "Advanced — Lua stats reporter (optional)"));
+    if (!usesGtps) advanced.open = true;
+
+    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection, advanced].filter(Boolean)));
+
     if (GT.api.isDemo) {
-      panel.replaceChildren(h("div", { class: "notice notice-info" }, h("p", {}, "Server stats need the Supabase backend. Connect Supabase in js/config.js first.")));
+      advanced.append(h("p", { class: "muted" }, "The Lua reporter needs the Supabase backend."));
       return;
     }
 
-    loadingPanel(panel);
     let stats;
     try {
       stats = await admin.getServerStats();
     } catch (error) {
-      panel.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {}, `${error.message} If you just updated the website, run the latest supabase/schema.sql.`)));
+      advanced.append(h("div", { class: "notice notice-warn" }, h("p", {}, `${error.message} If you just updated the website, run the latest supabase/schema.sql.`)));
       return;
     }
 
@@ -1330,14 +1368,14 @@
     const online = Boolean(stats.online);
     const reported = stats.reportedAt ? formatDateTime(stats.reportedAt) : "never";
 
-    panel.replaceChildren(
+    advanced.append(
+      h("p", { class: "muted" }, usesGtps
+        ? "Only needed if you also want Peak online tracking. You can delete serverwebsite.lua from your server if you don't."
+        : "Sends player and world counts from your game server to the website every ~60 seconds."),
       h("div", { class: "stat-grid" },
-        statCard("Server", online ? "Online" : "Offline", stats.reportedAt ? `Last report: ${reported}` : "No report received yet"),
-        statCard("Players online", online ? String(stats.players) : "0"),
-        statCard("Active worlds", stats.worlds === null || stats.worlds === undefined ? "—" : (online ? String(stats.worlds) : "0"), "Worlds currently in use"),
-        statCard("Peak online", String(stats.peak), "Highest players seen"),
+        statCard("Lua reporter", online ? "Reporting" : "Not reporting", stats.reportedAt ? `Last report: ${reported}` : "No report received yet"),
+        statCard("Peak online", String(stats.peak ?? 0), "Highest players seen"),
         h("div", { class: "stat stat-actions" },
-          h("button", { type: "button", class: "btn btn-outline btn-sm", onclick: () => renderDashboard() }, "↻ Refresh"),
           h("button", {
             type: "button",
             class: "btn btn-ghost btn-sm",
@@ -1355,16 +1393,12 @@
           }, "Reset peak")
         )
       ),
-      h("section", { class: "card" },
-        h("h2", { class: "card-title" }, "Connect your game server"),
-        h("ol", { class: "instructions server-steps" },
-          h("li", {}, "Generate a token below. A ready-to-use Lua script appears with your token inside."),
-          h("li", {}, "Copy the script and add it to your server's Lua scripts in GTPS Cloud, then restart or reload the scripts."),
-          h("li", {}, "Within about a minute, the stats above and on the landing page start updating. If the server stops reporting for 3 minutes, it shows as Offline.")
-        ),
-        h("div", { class: "modal-actions start no-margin" }, generate),
-        scriptSlot
-      )
+      h("ol", { class: "instructions server-steps" },
+        h("li", {}, "Generate a token below. A ready-to-use Lua script appears with your token inside."),
+        h("li", {}, "Add the script to your server's Lua scripts in GTPS Cloud, then restart or reload the scripts.")
+      ),
+      h("div", { class: "modal-actions start no-margin" }, generate),
+      scriptSlot
     );
   }
 

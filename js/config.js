@@ -1,4 +1,4 @@
-// GTPLAY v3.5 (server stats via Lua)
+// GTPLAY v3.6 (GTPS Cloud status)
 // ==================================================
 // GTPLAY CONFIGURATION
 // --------------------------------------------------
@@ -26,17 +26,18 @@ GT.config = Object.freeze({
   SOCIAL_LINKS: {
     instagram: "",
     tiktok: "",
-    discord: "https://discord.gg/B67yKDbfZd",
+    discord: "",
     youtube: ""
   },
 
   // ------------------------------------------------
   // STATUS SERVER (landing page)
   // ------------------------------------------------
-  // Kosong (disarankan) = memakai data yang dikirim script Lua
-  // server ke Supabase (Admin → Server). Isi dengan URL JSON
-  // lain hanya jika punya sumber status sendiri.
-  SERVER_STATUS_URL: "",
+  // "/api/server-status" = Vercel function (folder api/) yang membaca
+  // API publik GTPS Cloud. Server ID diatur lewat environment variable
+  // GTPS_SERVER_ID di Vercel (default 6986).
+  // Kosongkan = memakai data dari script Lua (Admin → Server → Advanced).
+  SERVER_STATUS_URL: "/api/server-status",
   SERVER_STATUS_REFRESH_SECONDS: 60,
 
   // Petunjuk singkat cara memakai redeem code, tampil di bawah code
