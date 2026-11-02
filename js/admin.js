@@ -28,12 +28,13 @@
   // Slug URL bisa beda dari key tab (mis. /admin/announcement).
   // ------------------------------------------------
 
-  const TABS = ["overview", "orders", "products", "reviews", "announcements", "prices", "downloads", "server"];
-  const TAB_SLUGS = { overview: "", orders: "orders", products: "products", reviews: "reviews", announcements: "announcements", prices: "prices", downloads: "downloads", server: "server" };
+  const TABS = ["overview", "orders", "products", "reviews", "announcements", "prices", "downloads", "server", "feedback"];
+  const TAB_SLUGS = { overview: "", orders: "orders", products: "products", reviews: "reviews", announcements: "announcements", prices: "prices", downloads: "downloads", server: "server", feedback: "feedback" };
   const SLUG_TO_TAB = {
     "": "overview", overview: "overview", orders: "orders", products: "products",
     reviews: "reviews", review: "reviews", announcements: "announcements", announcement: "announcements",
-    prices: "prices", price: "prices", "bgl-price": "prices", downloads: "downloads", download: "downloads", server: "server"
+    prices: "prices", price: "prices", "bgl-price": "prices", downloads: "downloads", download: "downloads", server: "server",
+    feedback: "feedback", suggestions: "feedback", bugs: "feedback"
   };
 
   function usePathRouting() {
@@ -81,7 +82,9 @@
     status: "all",
     session: null,
     reviews: [],
-    reviewFilter: "pending"
+    reviewFilter: "pending",
+    feedback: [],
+    feedbackFilter: "new"
   };
 
   const ACTION_LABELS = {
@@ -183,17 +186,20 @@
   // ------------------------------------------------
 
   async function loadData() {
-    const [orders, products, storeStatus, reviews] = await Promise.all([
+    const [orders, products, storeStatus, reviews, feedback] = await Promise.all([
       admin.listOrders(),
       admin.listProducts(),
       GT.api.getStoreStatus().catch(() => null),
-      admin.listReviews().catch(() => null)
+      admin.listReviews().catch(() => null),
+      admin.listFeedback().catch(() => null)
     ]);
     state.orders = orders;
     state.products = products;
     state.storeStatus = storeStatus;
     state.reviews = reviews || [];
     state.reviewsUnavailable = reviews === null;
+    state.feedback = feedback || [];
+    state.feedbackUnavailable = feedback === null;
   }
 
   function stats() {
@@ -313,7 +319,8 @@
       ["announcements", "Announcements"],
       ["prices", "BGL Price"],
       ["downloads", "Downloads"],
-      ["server", "Server"]
+      ["server", "Server"],
+      ["feedback", state.feedback.filter(f => f.status === "new").length ? `Feedback (${state.feedback.filter(f => f.status === "new").length})` : "Feedback"]
     ];
 
     const panel = h("div", { id: "tabPanel", role: "tabpanel" });
@@ -342,6 +349,7 @@
     else if (state.tab === "prices") renderPrices(panel);
     else if (state.tab === "downloads") renderDownloads(panel);
     else if (state.tab === "server") renderServer(panel);
+    else if (state.tab === "feedback") renderFeedback(panel);
     else renderOverview(panel);
   }
 
@@ -1559,6 +1567,87 @@
     );
 
     panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection].filter(Boolean)));
+  }
+
+  // ------------------------------------------------
+  // FEEDBACK (saran & laporan bug dari /feedback)
+  // ------------------------------------------------
+
+  function renderFeedback(panel) {
+    if (state.feedbackUnavailable) {
+      panel.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {}, "Feedback needs the latest database. Run supabase/migration_v5_feedback.sql in the Supabase SQL Editor.")));
+      return;
+    }
+
+    const kinds = { suggestion: ["tone-info", "Suggestion"], bug: ["tone-danger", "Bug report"] };
+    const filters = [["new", "New"], ["read", "Read"], ["bug", "Bugs"], ["suggestion", "Suggestions"], ["all", "All"]];
+    const matches = (item, key) => key === "all" || item.status === key || item.kind === key;
+    const list = state.feedback.filter(item => matches(item, state.feedbackFilter));
+    const readCount = state.feedback.filter(item => item.status === "read").length;
+
+    async function act(item, action) {
+      try {
+        if (action === "delete") {
+          const ok = await confirmDialog({ title: "Delete this feedback?", message: "This can't be undone.", confirmLabel: "Delete", danger: true });
+          if (!ok) return;
+          await admin.deleteFeedback(item.id);
+          toast("Feedback deleted.", "success");
+        } else {
+          await admin.setFeedbackStatus(item.id, action);
+        }
+        await reload();
+      } catch (error) {
+        toast(error.message, "error");
+      }
+    }
+
+    async function clearRead() {
+      const ok = await confirmDialog({ title: `Delete ${readCount} read feedback?`, message: "All feedback marked as read will be removed.", confirmLabel: "Delete all read", danger: true });
+      if (!ok) return;
+      try {
+        const removed = await admin.clearReadFeedback();
+        toast(`${removed || 0} feedback deleted.`, "success");
+        await reload();
+      } catch (error) {
+        toast(error.message, "error");
+      }
+    }
+
+    panel.replaceChildren(...[
+      h("div", { class: "admin-top admin-toolbar" },
+        h("p", { class: "muted" }, "Suggestions and bug reports from players. To keep the database small, read items are removed after 30 days, everything after 90 days, and at most 500 are kept."),
+        h("div", { class: "chips no-margin", role: "group", "aria-label": "Filter feedback" },
+          filters.map(([key, label]) => h("button", {
+            type: "button",
+            class: "chip",
+            "aria-pressed": String(state.feedbackFilter === key),
+            onclick: () => { state.feedbackFilter = key; renderDashboard(); }
+          }, `${label} (${state.feedback.filter(item => matches(item, key)).length})`))
+        )
+      ),
+      readCount ? h("div", { class: "row-actions start" },
+        h("button", { type: "button", class: "btn btn-ghost btn-sm", onclick: clearRead }, `Delete all read (${readCount})`)
+      ) : null,
+      list.length === 0
+        ? h("div", { class: "state-block" }, h("p", { class: "state-title" }, "No feedback here"))
+        : h("div", { class: "admin-reviews" }, list.map(item => h("article", { class: `card admin-review${item.status === "new" ? " is-new" : ""}` },
+            h("div", { class: "order-head" },
+              h("div", { class: "admin-review-head" },
+                h("span", { class: `status-badge ${kinds[item.kind][0]}` }, kinds[item.kind][1]),
+                item.status === "new" ? h("span", { class: "status-badge tone-warn" }, "New") : null
+              ),
+              h("span", { class: "help" }, formatDateTime(item.createdAt))
+            ),
+            h("p", { class: "review-comment feedback-message" }, item.message),
+            h("p", { class: "help mono" }, item.growId),
+            h("div", { class: "row-actions start" },
+              item.status === "new"
+                ? h("button", { type: "button", class: "btn btn-primary btn-sm", onclick: () => act(item, "read") }, "Mark as read")
+                : h("button", { type: "button", class: "btn btn-outline btn-sm", onclick: () => act(item, "new") }, "Mark as new"),
+              h("button", { type: "button", class: "btn btn-danger btn-sm", onclick: () => act(item, "delete") }, "Delete")
+            )
+          )))
+    ].filter(Boolean));
   }
 
   // ------------------------------------------------

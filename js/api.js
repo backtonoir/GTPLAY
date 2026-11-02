@@ -63,6 +63,10 @@ GT.api = (function () {
     REVIEW_EXISTS: "You already reviewed this order.",
     INVALID_REVIEW: "Pick a rating from 1 to 5 stars. Comments can be up to 300 characters.",
     INVALID_DISCOUNT: "Discount must be a whole number from 0 to 90 percent.",
+    INVALID_FEEDBACK: "Pick a type and write 10–500 characters.",
+    FEEDBACK_LIMIT: "You've sent the maximum feedback for today. Please try again tomorrow.",
+    FEEDBACK_DUPLICATE: "You already sent this exact message.",
+    FEEDBACK_BUSY: "We've received a lot of feedback today. Please try again tomorrow.",
     NETWORK: "Could not reach the server. Check your connection and try again."
   };
 
@@ -110,6 +114,17 @@ GT.api = (function () {
     const price = Number(entry.price);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(entry.recordedOn || ""))) fail("INVALID_PRICE");
     if (!Number.isInteger(price) || price <= 0) fail("INVALID_PRICE");
+  }
+
+  const FEEDBACK_KINDS = ["suggestion", "bug"];
+
+  function cleanFeedback(kind, growId, text) {
+    if (!FEEDBACK_KINDS.includes(kind)) fail("INVALID_FEEDBACK");
+    const check = validateGrowId(growId);
+    if (!check.ok) fail("INVALID_GROWID");
+    const message = String(text || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
+    if (message.length < 10 || message.length > 500) fail("INVALID_FEEDBACK");
+    return { kind, growId: check.value, message };
   }
 
   function validateDownloads(links) {
@@ -289,6 +304,16 @@ GT.api = (function () {
     const ANNOUNCEMENTS_KEY = "gtplay:demo:announcements";
     const PRICES_KEY = "gtplay:demo:lock-prices";
     const REVIEWS_KEY = "gtplay:demo:reviews";
+    const FEEDBACK_KEY = "gtplay:demo:feedback";
+
+    function loadFeedback() {
+      const saved = storage.get(FEEDBACK_KEY, []);
+      return Array.isArray(saved) ? saved : [];
+    }
+
+    function saveFeedback(list) {
+      storage.set(FEEDBACK_KEY, list.slice(0, 500));
+    }
 
     function loadReviews() {
       const saved = storage.get(REVIEWS_KEY, []);
@@ -469,6 +494,18 @@ GT.api = (function () {
         });
         saveReviews(list);
         return publicOrder(order);
+      },
+
+      async submitFeedback(kind, growId, text) {
+        const input = cleanFeedback(kind, growId, text);
+        const list = loadFeedback();
+        const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+        const mine = list.filter(item => item.growId.toLowerCase() === input.growId.toLowerCase());
+        if (mine.filter(item => Date.parse(item.createdAt) > dayAgo).length >= 3) fail("FEEDBACK_LIMIT");
+        if (mine.some(item => item.message.toLowerCase() === input.message.toLowerCase())) fail("FEEDBACK_DUPLICATE");
+        list.unshift({ id: Date.now(), ...input, status: "new", createdAt: new Date().toISOString() });
+        saveFeedback(list);
+        return { ok: true };
       },
 
       async createOrder({ growId, items }) {
@@ -664,6 +701,26 @@ GT.api = (function () {
           saveReviews(loadReviews().filter(item => item.id !== id));
         },
 
+        async listFeedback() {
+          return loadFeedback();
+        },
+
+        async setFeedbackStatus(id, status) {
+          if (!["new", "read"].includes(status)) fail("INVALID_FEEDBACK");
+          saveFeedback(loadFeedback().map(item => (item.id === id ? { ...item, status } : item)));
+        },
+
+        async deleteFeedback(id) {
+          saveFeedback(loadFeedback().filter(item => item.id !== id));
+        },
+
+        async clearReadFeedback() {
+          const list = loadFeedback();
+          const keep = list.filter(item => item.status !== "read");
+          saveFeedback(keep);
+          return list.length - keep.length;
+        },
+
         async listProducts() {
           return loadProducts();
         },
@@ -781,6 +838,7 @@ GT.api = (function () {
           storage.remove(ANNOUNCEMENTS_KEY);
           storage.remove(PRICES_KEY);
           storage.remove(REVIEWS_KEY);
+          storage.remove(FEEDBACK_KEY);
         }
       }
     };
@@ -1024,6 +1082,11 @@ GT.api = (function () {
         return rpc("list_reviews", { p_limit: limit || 6 });
       },
 
+      async submitFeedback(kind, growId, text) {
+        const input = cleanFeedback(kind, growId, text);
+        return rpc("submit_feedback", { p_kind: input.kind, p_grow_id: input.growId, p_message: input.message });
+      },
+
       async submitReview(orderId, accessCode, rating, comment) {
         validateReview(rating, comment);
         return mapOrder(await rpc("submit_review", {
@@ -1214,6 +1277,22 @@ GT.api = (function () {
 
         async deleteReview(id) {
           return rpc("admin_delete_review", { p_id: id });
+        },
+
+        async listFeedback() {
+          return rpc("admin_list_feedback");
+        },
+
+        async setFeedbackStatus(id, status) {
+          return rpc("admin_set_feedback_status", { p_id: id, p_status: status });
+        },
+
+        async deleteFeedback(id) {
+          return rpc("admin_delete_feedback", { p_id: id });
+        },
+
+        async clearReadFeedback() {
+          return rpc("admin_clear_read_feedback");
         },
 
         async setRedeemCode(orderId, redeemCode) {

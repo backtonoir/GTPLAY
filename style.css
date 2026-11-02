@@ -4139,3 +4139,34 @@ textarea.input {
   display: flex;
   flex-direction: column;
 }
+
+/* ================================================
+   FEEDBACK (saran & laporan bug)
+   ================================================ */
+.feedback-count {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feedback-count .is-low {
+  color: var(--amber);
+}
+
+.feedback-tips {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.feedback-message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.admin-review.is-new {
+  border-color: var(--red);
+}
