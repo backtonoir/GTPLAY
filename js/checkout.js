@@ -1,4 +1,4 @@
-// GTPLAY v3.7 (discount, reviews, ID/EN)
+// GTPLAY v3.8 (clean URLs)
 // ==================================================
 // GTPLAY CHECKOUT PAGE (checkout.html)
 // --------------------------------------------------
@@ -47,7 +47,7 @@
     return h("div", { class: "card" },
       h("div", { class: "order-head" },
         h("h2", { class: "card-title" }, "Order summary"),
-        h("a", { class: "link-button", href: "store.html#store" }, "+ Add more items")
+        h("a", { class: "link-button", href: "/store#store" }, "+ Add more items")
       ),
       h("table", { class: "line-table" },
         h("thead", {},
@@ -193,7 +193,7 @@
       GT.api.myOrders.add({ id: result.orderId, code: result.accessCode });
       GT.cart.clear();
 
-      window.location.href = `payment.html?order=${encodeURIComponent(result.orderId)}#k=${encodeURIComponent(result.accessCode)}`;
+      window.location.href = `/payment?order=${encodeURIComponent(result.orderId)}#k=${encodeURIComponent(result.accessCode)}`;
     } catch (error) {
       submitting = false;
       errorEl.textContent = error.message || GT.t("Could not create the order.");
@@ -201,7 +201,7 @@
 
       // Stok/harga berubah → muat ulang katalog agar keranjang disesuaikan.
       if (error.code === "MAINTENANCE") {
-        setTimeout(() => window.location.replace("maintenance.html"), 1500);
+        setTimeout(() => window.location.replace("/maintenance"), 1500);
       }
 
       if (["OUT_OF_STOCK", "PRODUCT_UNAVAILABLE"].includes(error.code)) {
@@ -223,7 +223,7 @@
         h("div", { class: "state-block" },
           h("p", { class: "state-title" }, "Your cart is empty"),
           h("p", { class: "state-text" }, "Add items from the store before checking out."),
-          h("a", { class: "btn btn-primary", href: "store.html#store" }, "Go to store")
+          h("a", { class: "btn btn-primary", href: "/store#store" }, "Go to store")
         )
       );
       return;

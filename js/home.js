@@ -1,4 +1,4 @@
-// GTPLAY v3.7 (discount, reviews, ID/EN)
+// GTPLAY v3.8 (clean URLs)
 // ==================================================
 // GTPLAY LANDING PAGE (index.html)
 // --------------------------------------------------
@@ -238,7 +238,7 @@
         root.replaceChildren(h("div", { class: "state-block borderless" },
           h("p", { class: "state-title" }, "No reviews yet"),
           h("p", { class: "state-text" }, "Buy an item and leave a review once your order is completed."),
-          h("a", { class: "btn btn-outline btn-sm", href: "store.html" }, "Visit Store")));
+          h("a", { class: "btn btn-outline btn-sm", href: "/store" }, "Visit Store")));
         return;
       }
 

@@ -1,4 +1,4 @@
-// GTPLAY v3.7 (discount, reviews, ID/EN)
+// GTPLAY v3.8 (clean URLs)
 // ==================================================
 // ANNOUNCEMENT PAGE (announcement.html)
 // --------------------------------------------------

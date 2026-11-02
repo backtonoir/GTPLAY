@@ -1,4 +1,4 @@
-// GTPLAY v3.7 (discount, reviews, ID/EN)
+// GTPLAY v3.8 (clean URLs)
 // GTPLAY SHARED LAYOUT
 // --------------------------------------------------
 // Dipakai semua halaman toko:
@@ -13,6 +13,15 @@ window.GT = window.GT || {};
 
 GT.layout = (function () {
   const { h, $, formatRupiah, toast, lockScroll, unlockScroll } = GT.utils;
+
+  // Nama halaman saat ini tanpa ekstensi (mendukung URL bersih /store
+  // maupun /store.html). Home ("/") → "index".
+  function pageSlug() {
+    let p = window.location.pathname.toLowerCase().replace(/\/+$/, "");
+    p = p.split("/").pop() || "";
+    p = p.replace(/\.html$/, "");
+    return p === "" ? "index" : p;
+  }
 
   // ------------------------------------------------
   // CATALOG (dimuat sekali, dipakai store + cart)
@@ -63,7 +72,7 @@ GT.layout = (function () {
     });
 
     // Tandai link halaman aktif.
-    const page = (window.location.pathname.split("/").pop() || "index.html").toLowerCase();
+    const page = pageSlug();
     nav.querySelectorAll("a[data-page]").forEach(link => {
       if (link.dataset.page === page) link.setAttribute("aria-current", "page");
     });
@@ -203,7 +212,7 @@ GT.layout = (function () {
         h("div", { class: "state-block" },
           h("p", { class: "state-title" }, "Your cart is empty"),
           h("p", { class: "state-text" }, "Browse the store and add the items you need."),
-          h("a", { class: "btn btn-outline", href: "store.html#store", onclick: closeCart }, "Browse items")
+          h("a", { class: "btn btn-outline", href: "/store#store", onclick: closeCart }, "Browse items")
         )
       );
       return;
@@ -248,7 +257,7 @@ GT.layout = (function () {
           : null,
         h("div", { class: "summary-row summary-total" }, h("span", {}, "Total"), h("strong", {}, formatRupiah(GT.cart.total())))
       ),
-      h("a", { class: "btn btn-primary btn-block btn-lg", href: "checkout.html" }, "Checkout"),
+      h("a", { class: "btn btn-primary btn-block btn-lg", href: "/checkout" }, "Checkout"),
       h("button", {
         type: "button",
         class: "link-button muted center",
@@ -274,7 +283,7 @@ GT.layout = (function () {
       button.addEventListener("click", event => {
         event.preventDefault();
         if (withDrawer) openCart();
-        else window.location.href = "store.html#store";
+        else window.location.href = "/store#store";
       });
     });
 
@@ -315,7 +324,7 @@ GT.layout = (function () {
   // Pesanan baru juga ditolak oleh server (GT:MAINTENANCE).
   // ------------------------------------------------
 
-  const MAINTENANCE_EXEMPT = ["payment.html", "track.html"];
+  const MAINTENANCE_EXEMPT = ["payment", "track"];
 
   function maintenanceBanner(text) {
     if (document.getElementById("maintenanceBanner")) return;
@@ -331,7 +340,7 @@ GT.layout = (function () {
     }
     if (!status || !status.maintenance) return;
 
-    const page = (window.location.pathname.split("/").pop() || "index.html").toLowerCase();
+    const page = pageSlug();
 
     let isAdmin = false;
     if (GT.api.admin && GT.api.admin.requiresAuth) {
@@ -352,7 +361,7 @@ GT.layout = (function () {
       return;
     }
 
-    window.location.replace("maintenance.html");
+    window.location.replace("/maintenance");
   }
 
   function init(options) {

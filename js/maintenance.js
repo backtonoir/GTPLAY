@@ -1,4 +1,4 @@
-// GTPLAY v3.7 (discount, reviews, ID/EN)
+// GTPLAY v3.8 (clean URLs)
 // ==================================================
 // MAINTENANCE PAGE (maintenance.html)
 // --------------------------------------------------
@@ -35,7 +35,7 @@
 
     // Hanya pindah otomatis jika tadi kita melihat status maintenance
     // menyala (mencegah loop dengan mode maintenance lewat vercel.json).
-    if (wasOn) window.location.replace("index.html");
+    if (wasOn) window.location.replace("/");
   }
 
   async function check() {

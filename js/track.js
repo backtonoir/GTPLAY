@@ -1,4 +1,4 @@
-// GTPLAY v3.7 (discount, reviews, ID/EN)
+// GTPLAY v3.8 (clean URLs)
 // ==================================================
 // GTPLAY TRACK ORDER PAGE (track.html)
 // --------------------------------------------------
@@ -29,7 +29,7 @@
     if (order.status === "pending_payment") {
       actions.append(h("a", {
         class: "btn btn-primary",
-        href: `payment.html?order=${encodeURIComponent(order.id)}#k=${encodeURIComponent(code)}`
+        href: `/payment?order=${encodeURIComponent(order.id)}#k=${encodeURIComponent(code)}`
       }, "Continue to payment"));
     }
 
@@ -99,12 +99,12 @@
     deviceList.replaceChildren(...refs.map(ref =>
       h("li", {},
         h("a", {
-          href: `track.html?order=${encodeURIComponent(ref.id)}`,
+          href: `/track?order=${encodeURIComponent(ref.id)}`,
           onclick: event => {
             event.preventDefault();
             idInput.value = ref.id;
             codeInput.value = ref.code;
-            history.replaceState(null, "", `track.html?order=${encodeURIComponent(ref.id)}`);
+            history.replaceState(null, "", `/track?order=${encodeURIComponent(ref.id)}`);
             track(ref.id, ref.code);
           }
         },

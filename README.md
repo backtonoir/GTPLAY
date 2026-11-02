@@ -190,19 +190,34 @@ Halaman utama sekarang landing page; toko pindah ke `store.html`.
 3. Di [vercel.com](https://vercel.com) → **Add New → Project** → pilih repo → Framework Preset **Other** → Build command & output directory kosong → **Deploy**. Project yang sudah terhubung akan deploy otomatis setiap push.
 4. `vercel.json` menambahkan security headers (CSP, `X-Frame-Options`, dll.). Jika kamu menambah script/gambar dari domain lain, tambahkan domainnya ke CSP.
 
+### URL bersih (tanpa `.html`)
+
+`vercel.json` mengaktifkan `"cleanUrls": true`, jadi semua halaman diakses tanpa `.html`:
+
+| Lama | Baru |
+|---|---|
+| `/store.html` | `/store` |
+| `/track.html` | `/track` |
+| `/admin.html` | `/admin` |
+| `/admin.html#announcements` | `/admin/announcements` |
+
+- URL lama (`...​.html` dan `/admin.html#tab`) tetap bekerja — otomatis dialihkan ke bentuk baru, jadi bookmark lama tidak rusak.
+- Tab admin kini jadi bagian path: `/admin/orders`, `/admin/products`, `/admin/reviews`, `/admin/announcements`, `/admin/prices`, `/admin/downloads`, `/admin/server`. Blok `rewrites` di `vercel.json` yang membuat ini bekerja — **jangan dihapus**.
+- Membuka `admin.html` langsung dari file (file://) tidak disarankan; akses lewat domain Vercel. Untuk tes lokal pakai `python3 -m http.server` lalu buka `/admin.html` (mode hash `#tab` otomatis dipakai saat URL masih berakhiran `.html`).
+
 ### Mode maintenance
 
 **Cara utama:** Admin → Overview → kartu **Store status** → isi estimasi waktu & pesan → **Turn on maintenance**. Pengunjung toko dialihkan ke `maintenance.html`, pesanan baru ditolak server, sedangkan Payment & Track Order tetap bisa dibuka untuk pesanan yang sudah ada. Admin yang login tetap bisa melihat toko. Tekan **Open store** untuk membuka kembali — halaman maintenance otomatis kembali ke toko dalam ±30 detik.
 
 **Cara darurat** (mis. Supabase sedang bermasalah) — lewat `vercel.json`:
 
-Tambahkan blok `redirects` ke `vercel.json` (sejajar dengan `"headers"`), lalu commit. Semua halaman toko dialihkan ke `maintenance.html`, sementara `admin.html` tetap bisa dibuka:
+Tambahkan blok `redirects` ke `vercel.json` (sejajar dengan `"headers"`), lalu commit. Semua halaman toko dialihkan ke `/maintenance`, sementara `/admin` tetap bisa dibuka:
 
 ```json
 "redirects": [
   {
-    "source": "/((?!maintenance\\.html|admin\\.html|style\\.css|favicon\\.svg|js/|images/).*)",
-    "destination": "/maintenance.html",
+    "source": "/((?!maintenance|admin|style\\.css|favicon\\.svg|js/|images/|api/).*)",
+    "destination": "/maintenance",
     "permanent": false
   }
 ],

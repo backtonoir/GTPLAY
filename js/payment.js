@@ -1,4 +1,4 @@
-// GTPLAY v3.7 (discount, reviews, ID/EN)
+// GTPLAY v3.8 (clean URLs)
 // ==================================================
 // GTPLAY PAYMENT PAGE (payment.html?order=ID#k=CODE)
 // --------------------------------------------------
@@ -116,7 +116,7 @@
       class: "btn btn-primary",
       onclick: () => {
         GT.cart.replace(order.items.map(item => ({ id: item.productId, qty: item.quantity })));
-        window.location.href = "checkout.html";
+        window.location.href = "/checkout";
       }
     }, "Order again");
   }
@@ -346,7 +346,7 @@
         redeem || h("div", { class: "notice notice-ok" }, h("p", {}, "Your order is complete. Contact admin if you haven't received your redeem code.")),
         h("p", { class: "help" }, "Thanks for shopping at GTPLAY! Your redeem code stays available on Track Order."),
         GT.reviewBlock(order, accessCode, updated => { order = updated; render(); }),
-        h("a", { class: "btn btn-outline", href: "store.html#store" }, "Back to store")
+        h("a", { class: "btn btn-outline", href: "/store#store" }, "Back to store")
       );
     } else if (s === "expired") {
       panel.append(
@@ -429,7 +429,7 @@
         h("p", { class: "state-title" }, error.code === "ORDER_NOT_FOUND" ? "Order not found" : "Couldn't load this order"),
         h("p", { class: "state-text" }, error.message),
         h("div", { class: "modal-actions" },
-          h("a", { class: "btn btn-outline", href: "track.html" }, "Track an order"),
+          h("a", { class: "btn btn-outline", href: "/track" }, "Track an order"),
           error.code === "ORDER_NOT_FOUND" ? null : h("button", { type: "button", class: "btn btn-primary", onclick: () => refresh() }, "Try again")
         )
       )
@@ -443,7 +443,7 @@
       h("div", { class: "state-block" },
         h("p", { class: "state-title" }, "Payment link is incomplete"),
         h("p", { class: "state-text" }, "Open your order from the Track Order page using your Order ID and access code."),
-        h("a", { class: "btn btn-primary", href: "track.html" }, "Track order")
+        h("a", { class: "btn btn-primary", href: "/track" }, "Track order")
       )
     );
     return;

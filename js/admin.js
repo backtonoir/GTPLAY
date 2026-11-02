@@ -1,4 +1,4 @@
-// GTPLAY v3.7 (discount, reviews, ID/EN)
+// GTPLAY v3.8 (clean URLs)
 // ==================================================
 // GTPLAY ADMIN DASHBOARD (admin.html)
 // --------------------------------------------------
@@ -19,6 +19,59 @@
   const admin = GT.api.admin;
   const root = $("#adminRoot");
   const userSlot = $("#adminUser");
+
+  // ------------------------------------------------
+  // ROUTING TAB
+  // --------------------------------------------------
+  // Saat di-deploy (URL bersih): /admin, /admin/orders, …
+  // Saat dibuka sebagai file lokal (admin.html): pakai #hash.
+  // Slug URL bisa beda dari key tab (mis. /admin/announcement).
+  // ------------------------------------------------
+
+  const TABS = ["overview", "orders", "products", "reviews", "announcements", "prices", "downloads", "server"];
+  const TAB_SLUGS = { overview: "", orders: "orders", products: "products", reviews: "reviews", announcements: "announcements", prices: "prices", downloads: "downloads", server: "server" };
+  const SLUG_TO_TAB = {
+    "": "overview", overview: "overview", orders: "orders", products: "products",
+    reviews: "reviews", review: "reviews", announcements: "announcements", announcement: "announcements",
+    prices: "prices", price: "prices", "bgl-price": "prices", downloads: "downloads", download: "downloads", server: "server"
+  };
+
+  function usePathRouting() {
+    const path = window.location.pathname;
+    return !/\.html$/i.test(path) && /\/admin(\/|$)/.test(path);
+  }
+
+  function slugToTab(slug) {
+    slug = String(slug || "").toLowerCase();
+    return Object.prototype.hasOwnProperty.call(SLUG_TO_TAB, slug) ? SLUG_TO_TAB[slug] : null;
+  }
+
+  function tabFromUrl() {
+    if (usePathRouting()) {
+      const m = window.location.pathname.match(/\/admin\/([^/]+)/);
+      const pathTab = m ? slugToTab(decodeURIComponent(m[1])) : null;
+      if (pathTab) return pathTab;
+      // Fallback ke #hash: bookmark lama admin.html#products → /admin#products.
+      const hashTab = slugToTab(window.location.hash.replace("#", ""));
+      if (hashTab) return hashTab;
+      return m ? null : "overview";
+    }
+    return slugToTab(window.location.hash.replace("#", ""));
+  }
+
+  function urlForTab(key) {
+    if (usePathRouting()) {
+      const slug = TAB_SLUGS[key] || "";
+      return "/admin" + (slug ? "/" + slug : "");
+    }
+    return "#" + key;
+  }
+
+  function goTab(key) {
+    state.tab = key;
+    try { history.replaceState(null, "", urlForTab(key)); } catch (error) { /* abaikan */ }
+    renderDashboard();
+  }
 
   const state = {
     tab: "overview",
@@ -236,8 +289,8 @@
       return;
     }
 
-    const fromHash = window.location.hash.replace("#", "");
-    if (TABS.includes(fromHash)) state.tab = fromHash;
+    const urlTab = tabFromUrl();
+    if (urlTab) state.tab = urlTab;
     renderDashboard();
   }
 
@@ -275,11 +328,7 @@
           class: "tab",
           role: "tab",
           "aria-selected": String(state.tab === key),
-          onclick: () => {
-            state.tab = key;
-            history.replaceState(null, "", `#${key}`);
-            renderDashboard();
-          }
+          onclick: () => goTab(key)
         }, label))
       ),
       panel
@@ -404,7 +453,7 @@
       ),
       h("div", { class: "modal-actions start no-margin" }, toggle, saveText, h("a", {
         class: "btn btn-ghost",
-        href: "maintenance.html",
+        href: "/maintenance",
         target: "_blank",
         rel: "noopener"
       }, "Preview page"))
@@ -426,7 +475,7 @@
         ? h("p", { class: "muted" }, emptyText)
         : h("ul", { class: "device-orders" }, orders.slice(0, 8).map(order =>
             h("li", {}, h("a", {
-              href: "#orders",
+              href: urlForTab("orders"),
               onclick: event => {
                 event.preventDefault();
                 openOrder(order.id);
@@ -1466,7 +1515,7 @@
         return h("div", { class: "field" }, h("label", { class: "label", for: `dl-${key}` }, label), inputs[key]);
       }),
       error,
-      h("div", { class: "modal-actions start no-margin" }, submit, h("a", { class: "btn btn-ghost", href: "index.html#download", target: "_blank", rel: "noopener" }, "View on site"))
+      h("div", { class: "modal-actions start no-margin" }, submit, h("a", { class: "btn btn-ghost", href: "/#download", target: "_blank", rel: "noopener" }, "View on site"))
     ));
   }
 
@@ -1694,15 +1743,16 @@
       "Demo mode — no login required. Data is stored only in this browser and does not reach real customers. Connect Supabase (js/config.js) for real orders and admin login."));
   }
 
-  // Pindah tab lewat link #hash (mis. admin.html#prices).
-  const TABS = ["overview", "orders", "products", "reviews", "announcements", "prices", "downloads", "server"];
-  window.addEventListener("hashchange", () => {
-    const tab = window.location.hash.replace("#", "");
-    if (state.session && TABS.includes(tab) && tab !== state.tab) {
+  // Back/forward browser & perubahan hash → pindah tab sesuai URL.
+  function applyUrlTab() {
+    const tab = tabFromUrl();
+    if (state.session && tab && tab !== state.tab) {
       state.tab = tab;
       renderDashboard();
     }
-  });
+  }
+  window.addEventListener("popstate", applyUrlTab);
+  window.addEventListener("hashchange", applyUrlTab);
 
   (async function init() {
     try {
