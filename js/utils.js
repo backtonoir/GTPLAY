@@ -380,6 +380,83 @@ GT.utils = (function () {
     });
   }
 
+  // ------------------------------------------------
+  // DESKRIPSI PRODUK (format sederhana, tanpa HTML)
+  // ------------------------------------------------
+  // Admin cukup menulis teks biasa. Aturan tampilan:
+  //   • baris HURUF BESAR            → judul kecil
+  //   • baris ━━━ / ─── / ---        → garis pemisah
+  //   • baris diawali ・ • - * ✓     → daftar
+  //   • "Judul — penjelasan"         → daftar, judul ditebalkan
+  //   • baris kosong                 → jarak antar paragraf
+  // Semua dibuat lewat h() (textContent), jadi aman dari HTML.
+
+  const DESC_RULE = /^[━─═_~=\-–—·•.\s]{3,}$/;
+  const DESC_BULLET = /^[・•\-*·▪►➤✓✔]\s*(.+)$/;
+  const DESC_DECOR = /^[✦★☆◆◇❖✧•·\s]+/;
+
+  function descLines(text) {
+    return String(text || "").replace(/\r\n?/g, "\n").split("\n").map(line => line.trim());
+  }
+
+  function isDescHeading(line) {
+    const letters = line.replace(/[^A-Za-z]/g, "");
+    return letters.length >= 3 && line.length <= 60 && line === line.toUpperCase() && !DESC_BULLET.test(line);
+  }
+
+  function featureParts(line) {
+    const match = line.match(/^(.{2,48}?)\s[—–]\s(.+)$/);
+    return match ? [match[1], match[2]] : null;
+  }
+
+  function formatDescription(text) {
+    const root = h("div", { class: "desc-rich" });
+    let list = null;
+
+    const closeList = () => { list = null; };
+    const listItem = (...children) => {
+      if (!list) { list = h("ul", { class: "desc-list" }); root.append(list); }
+      list.append(h("li", {}, ...children));
+    };
+
+    descLines(text).forEach(line => {
+      if (!line) { closeList(); return; }
+      if (DESC_RULE.test(line)) { closeList(); root.append(h("hr", { class: "desc-rule" })); return; }
+
+      const bullet = line.match(DESC_BULLET);
+      if (bullet) {
+        const parts = featureParts(bullet[1]);
+        listItem(...(parts ? [h("strong", {}, parts[0]), ` — ${parts[1]}`] : [bullet[1]]));
+        return;
+      }
+      if (isDescHeading(line)) {
+        closeList();
+        root.append(h("h4", { class: "desc-heading" }, line.replace(DESC_DECOR, "")));
+        return;
+      }
+      const parts = featureParts(line);
+      if (parts) { listItem(h("strong", {}, parts[0]), ` — ${parts[1]}`); return; }
+
+      closeList();
+      root.append(h("p", {}, line));
+    });
+
+    return root;
+  }
+
+  // Ringkasan 1–2 kalimat untuk kartu produk.
+  function descriptionPreview(text) {
+    const lines = descLines(text).filter(line => line && !DESC_RULE.test(line));
+    const sentence = lines.find(line => !isDescHeading(line) && !DESC_BULLET.test(line) && !featureParts(line));
+    return (sentence || lines[0] || "").replace(DESC_BULLET, "$1").replace(DESC_DECOR, "");
+  }
+
+  // Ada isi lain selain ringkasan → tampilkan tombol Detail.
+  function descriptionHasMore(text) {
+    const lines = descLines(text).filter(line => line && !DESC_RULE.test(line));
+    return lines.length > 1 || (lines[0] || "").length > 110;
+  }
+
   // Salin teks ke clipboard (dengan fallback untuk browser lama).
   async function copyText(value) {
     try {
@@ -460,6 +537,9 @@ GT.utils = (function () {
     lockScroll,
     unlockScroll,
     confirmDialog,
+    formatDescription,
+    descriptionPreview,
+    descriptionHasMore,
     copyText,
     copyButton,
     debounce,

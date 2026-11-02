@@ -43,7 +43,7 @@ create table if not exists public.products (
   id          text primary key default ('item-' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)),
   name        text not null check (length(btrim(name)) between 1 and 60),
   category    text not null check (length(btrim(category)) between 1 and 40),
-  description text not null default '' check (length(description) <= 300),
+  description text not null default '' check (length(description) <= 2000),
   price       integer not null check (price >= 0),
   stock       integer not null default 0 check (stock >= 0),
   active      boolean not null default true,

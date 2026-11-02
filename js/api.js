@@ -230,6 +230,7 @@ GT.api = (function () {
 
     if (!String(product.name || "").trim()) fail("INVALID_PRODUCT");
     if (!String(product.category || "").trim()) fail("INVALID_PRODUCT");
+    if (String(product.description || "").length > 2000) fail("INVALID_PRODUCT");
     if (!Number.isInteger(price) || price < 0) fail("INVALID_PRODUCT");
     if (!Number.isInteger(stock) || stock < 0) fail("INVALID_PRODUCT");
 

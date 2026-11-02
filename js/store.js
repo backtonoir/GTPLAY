@@ -6,7 +6,7 @@
 // ==================================================
 
 (function () {
-  const { h, $, formatRupiah, toast, debounce } = GT.utils;
+  const { h, $, formatRupiah, toast, debounce, lockScroll, unlockScroll, formatDescription, descriptionPreview, descriptionHasMore } = GT.utils;
 
   const LOW_STOCK = 5;
 
@@ -124,7 +124,7 @@
   // Hanya tombol yang diperbarui saat keranjang berubah —
   // kartu & gambar tidak dirender ulang.
   function updateButtons() {
-    grid.querySelectorAll("[data-add-slot]").forEach(slot => {
+    document.querySelectorAll("[data-add-slot]").forEach(slot => {
       const product = state.products.find(p => p.id === slot.dataset.addSlot);
       if (product) slot.replaceChildren(addButton(product));
     });
@@ -146,9 +146,66 @@
     return h("p", { class: "promo-ends" }, GT.t("Promo until {date}", { date }));
   }
 
+  // ------------------------------------------------
+  // DETAIL PRODUK (deskripsi lengkap)
+  // ------------------------------------------------
+
+  function openDetail(product) {
+    const previous = document.activeElement;
+
+    function close() {
+      overlay.classList.remove("show");
+      document.removeEventListener("keydown", onKey);
+      unlockScroll();
+      setTimeout(() => overlay.remove(), 200);
+      if (previous && previous.focus) previous.focus();
+    }
+
+    function onKey(event) {
+      if (event.key === "Escape") close();
+    }
+
+    const closeBtn = h("button", { type: "button", class: "btn btn-ghost btn-sm product-detail-close", "aria-label": "Close", onclick: close }, "✕");
+
+    const overlay = h("div", { class: "modal-overlay", onclick: event => { if (event.target === overlay) close(); } },
+      h("div", { class: "modal product-detail", role: "dialog", "aria-modal": "true", "aria-labelledby": "productDetailTitle" },
+        h("div", { class: "product-detail-head" },
+          h("div", { class: "product-detail-media" },
+            GT.utils.imageWithFallback({ src: product.image, alt: product.name, fallback: product.fallback, eager: true })
+          ),
+          h("div", { class: "product-detail-info" },
+            h("span", { class: "product-tag static" }, product.category),
+            h("h3", { id: "productDetailTitle", class: "modal-title" }, product.name),
+            priceBlock(product),
+            stockBadge(product),
+            promoEnds(product)
+          ),
+          closeBtn
+        ),
+        product.description ? formatDescription(product.description) : h("p", { class: "muted" }, "No description."),
+        h("div", { class: "modal-actions product-detail-actions" },
+          h("button", { type: "button", class: "btn btn-ghost", onclick: close }, "Close"),
+          h("div", { class: "add-slot", dataset: { addSlot: product.id } }, addButton(product))
+        )
+      )
+    );
+
+    document.body.append(overlay);
+    lockScroll();
+    document.addEventListener("keydown", onKey);
+    closeBtn.focus();
+    requestAnimationFrame(() => overlay.classList.add("show"));
+  }
+
   function productCard(product) {
+    const preview = descriptionPreview(product.description);
+    const hasMore = descriptionHasMore(product.description);
+    const detailBtn = hasMore
+      ? h("button", { type: "button", class: "product-more", "aria-label": `${GT.t("Detail")}: ${product.name}`, onclick: () => openDetail(product) }, "Detail")
+      : null;
+
     return h("article", { class: `product-card${product.stock <= 0 ? " sold-out" : ""}${product.originalPrice ? " on-sale" : ""}` },
-      h("div", { class: "product-media" },
+      h("div", { class: `product-media${hasMore ? " is-clickable" : ""}`, onclick: hasMore ? () => openDetail(product) : null },
         GT.utils.imageWithFallback({ src: product.image, alt: product.name, fallback: product.fallback }),
         h("span", { class: "product-tag" }, product.category),
         stockBadge(product),
@@ -156,7 +213,8 @@
       ),
       h("div", { class: "product-body" },
         h("h3", {}, product.name),
-        product.description ? h("p", { class: "product-desc" }, product.description) : null,
+        preview ? h("p", { class: "product-desc" }, preview) : null,
+        detailBtn,
         promoEnds(product),
         h("div", { class: "product-foot" },
           priceBlock(product),

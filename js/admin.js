@@ -1043,8 +1043,12 @@
 
     const name = h("input", { class: "input", id: "pName", value: p.name, required: true, maxlength: "60" });
     const category = h("input", { class: "input", id: "pCategory", value: p.category, list: "categoryOptions", required: true, maxlength: "40" });
-    const description = h("textarea", { class: "input", id: "pDesc", rows: "3", maxlength: "300" });
+    const description = h("textarea", { class: "input product-desc-input", id: "pDesc", rows: "8", maxlength: "2000" });
     description.value = p.description || "";
+    const descCount = h("span", { class: "help desc-count" });
+    const updateDescCount = () => { descCount.textContent = `${description.value.length} / 2000`; };
+    description.addEventListener("input", updateDescCount);
+    updateDescCount();
     const price = h("input", { class: "input", id: "pPrice", type: "number", min: "0", step: "1", inputmode: "numeric", value: p.price, required: true });
     const stock = h("input", { class: "input", id: "pStock", type: "number", min: "0", step: "1", inputmode: "numeric", value: p.stock, required: true });
     const image = h("input", { class: "input", id: "pImage", value: p.image, placeholder: "images/items/item.png or https://…" });
@@ -1147,7 +1151,8 @@
       h("div", { class: "form-grid" },
         field("pName", "Name", name),
         field("pCategory", "Category", category, "Pick an existing one or type a new category."),
-        field("pDesc", "Description", description, null, true),
+        field("pDesc", "Description", description,
+          h("span", {}, "Kartu produk menampilkan kalimat pertama; teks lengkap ada di tombol Detail. Format: baris HURUF BESAR = judul, ━━━ = garis, ・ atau • = daftar, “Judul — penjelasan” = judul tebal. ", descCount), true),
         field("pPrice", "Price (Rp)", price),
         field("pStock", "Stock", stock),
         h("div", { class: "span-2 discount-box" },

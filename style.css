@@ -4528,3 +4528,162 @@ textarea.input {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ================================================
+   PRODUK — tombol Detail & jendela detail
+   ================================================ */
+.product-card .product-desc {
+  margin-bottom: 8px;
+}
+
+.product-more {
+  align-self: flex-start;
+  margin-bottom: 14px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.product-more::after {
+  content: " →";
+}
+
+.product-more:hover {
+  color: var(--text);
+}
+
+.product-media.is-clickable {
+  cursor: pointer;
+}
+
+.modal.product-detail {
+  width: min(640px, 100%);
+  position: relative;
+}
+
+.product-detail-head {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+
+.product-detail-media {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.product-detail-media .media {
+  width: 100%;
+  height: 100%;
+}
+
+.product-detail-info {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.product-detail-info .modal-title {
+  margin: 0;
+}
+
+.product-detail-info .product-tag.static,
+.product-detail-info .stock-badge {
+  position: static;
+}
+
+.product-detail-close {
+  min-width: 36px;
+}
+
+.product-detail-actions {
+  position: sticky;
+  bottom: calc(clamp(20px, 4vw, 28px) * -1);
+  margin: 22px calc(clamp(20px, 4vw, 28px) * -1) calc(clamp(20px, 4vw, 28px) * -1);
+  padding: 14px clamp(20px, 4vw, 28px);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/* Deskripsi berformat */
+.desc-rich {
+  display: grid;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.desc-heading {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.desc-rich > .desc-heading:first-child {
+  margin-top: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0;
+  color: var(--text);
+}
+
+.desc-list {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+}
+
+.desc-list li::marker {
+  color: var(--red);
+}
+
+.desc-list strong {
+  color: var(--text);
+}
+
+.desc-rule {
+  border: 0;
+  border-top: 1px dashed var(--border-strong);
+  margin: 6px 0;
+}
+
+.product-desc-input {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.desc-count {
+  float: right;
+}
+
+@media (max-width: 600px) {
+  .product-detail-head {
+    grid-template-columns: 84px minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+}
+
+.product-detail-media .media-fallback {
+  font-size: 14px;
+  line-height: 1.2;
+  padding: 6px;
+  overflow-wrap: anywhere;
+}
