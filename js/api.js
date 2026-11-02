@@ -431,6 +431,18 @@ GT.api = (function () {
         return loadProducts().filter(p => p.active).map(toCustomerProduct);
       },
 
+      async listChangelog() {
+        return [];
+      },
+
+      async listBlacklist() {
+        return [];
+      },
+
+      async checkBlacklist(growId) {
+        return { found: false, growId };
+      },
+
       async listReviews(limit) {
         const approved = loadReviews().filter(item => item.status === "approved");
         const orders = storage.get(ORDERS_KEY, {});
@@ -1020,6 +1032,20 @@ GT.api = (function () {
         return mapOrder(await rpc("get_order", { p_order_id: orderId, p_access_code: accessCode }));
       },
 
+      async listChangelog() {
+        return rpc("list_changelog");
+      },
+
+      async listBlacklist() {
+        return rpc("list_blacklist");
+      },
+
+      async checkBlacklist(growId) {
+        const check = validateGrowId(growId);
+        if (!check.ok) fail("INVALID_GROWID");
+        return rpc("check_blacklist", { p_grow_id: check.value });
+      },
+
       async listReviews(limit) {
         return rpc("list_reviews", { p_limit: limit || 6 });
       },
@@ -1070,6 +1096,12 @@ GT.api = (function () {
 
       admin: {
         requiresAuth: true,
+
+        // Supabase client langsung — hanya untuk fitur internal
+        // seperti Realtime subscription di admin dashboard.
+        async getClient() {
+          return client();
+        },
 
         async getSession() {
           const sb = await client();
