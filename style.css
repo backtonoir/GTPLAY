@@ -4376,3 +4376,155 @@ textarea.input {
   letter-spacing: 0.06em;
   color: var(--text-2);
 }
+
+/* ================================================
+   HOW TO — Cara Profit
+   ================================================ */
+.profit-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  counter-reset: profit;
+}
+
+.profit-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  counter-increment: profit;
+}
+
+.profit-card::before {
+  content: counter(profit, decimal-leading-zero);
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 4px;
+  background: var(--red);
+  clip-path: var(--notch);
+  font-family: var(--font-pixel);
+  font-size: 14px;
+  color: #fff;
+}
+
+.profit-card h3 {
+  font-size: 17px;
+}
+
+.profit-card > p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.profit-card .profit-yield {
+  margin-top: auto;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.profit-label {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  background: rgba(245, 165, 36, 0.12);
+  border: 1px solid rgba(245, 165, 36, 0.35);
+  border-radius: 999px;
+  vertical-align: 1px;
+}
+
+.profit-card .profit-tip {
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-size: 13px;
+}
+
+.profit-card .profit-tip strong {
+  color: var(--text);
+}
+
+/* Kotak Profit Tips mengisi sisa baris terakhir */
+.profit-tips {
+  grid-column: span 2;
+  border-color: rgba(229, 23, 47, 0.45);
+  background: linear-gradient(135deg, rgba(229, 23, 47, 0.10), var(--surface) 60%);
+  counter-increment: none;
+}
+
+.profit-tips::before {
+  content: "★";
+  font-family: inherit;
+  font-size: 18px;
+}
+
+.profit-tips ul {
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.profit-tips li::marker {
+  color: var(--red);
+}
+
+.profit-outro {
+  margin-top: 24px;
+  padding: 24px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.profit-outro p {
+  color: var(--muted);
+}
+
+.profit-outro-title {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 900;
+  color: var(--text) !important;
+  margin-bottom: 6px;
+}
+
+.profit-outro strong {
+  color: var(--amber);
+}
+
+.profit-outro-tag {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1024px) {
+  .profit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profit-tips {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .profit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
