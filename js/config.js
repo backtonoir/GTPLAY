@@ -36,15 +36,15 @@ GT.config = Object.freeze({
     },
     gopay: {
       label: "GoPay",
-      number: "",          // nomor GoPay (nomor HP), mis. "0812-3456-7890"
-      name: "",            // nama akun GoPay
+      number: "0815-4832-3242",          // nomor GoPay (nomor HP), mis. "0812-3456-7890"
+      name: "Jonathan Ariya Soputro",            // nama akun GoPay
       note: "Kirim GoPay ke nomor di atas sesuai nominal, lalu upload bukti transfer."
     },
     bca: {
       label: "Bank BCA",
       bank: "BCA",
-      number: "",          // nomor rekening BCA
-      name: "",            // nama pemilik rekening
+      number: "238-158-2762",          // nomor rekening BCA
+      name: "Jonathan Ariya Soputro",            // nama pemilik rekening
       note: "Transfer ke rekening BCA di atas sesuai nominal, lalu upload bukti transfer."
     }
   },
