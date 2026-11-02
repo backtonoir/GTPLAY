@@ -26,7 +26,7 @@ GT.config = Object.freeze({
   SOCIAL_LINKS: {
     instagram: "",
     tiktok: "",
-    discord: "",
+    discord: "https://discord.gg/B67yKDbfZd",
     youtube: ""
   },
 
