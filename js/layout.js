@@ -71,11 +71,47 @@ GT.layout = (function () {
       if (window.innerWidth > 900) setOpen(false);
     });
 
-    // Tandai link halaman aktif.
+    markActiveLink(nav);
+  }
+
+  // Tandai link menu yang aktif. Link dengan data-section (mis. FAQ →
+  // /store#faq) menyala saat bagian itu dibuka atau sedang terlihat;
+  // selain itu link halamannya (Store) yang menyala.
+  function markActiveLink(nav) {
     const page = pageSlug();
-    nav.querySelectorAll("a[data-page]").forEach(link => {
-      if (link.dataset.page === page) link.setAttribute("aria-current", "page");
+    const links = [...nav.querySelectorAll("a[data-page]")];
+    const sectionLinks = links.filter(link => link.dataset.page === page && link.dataset.section);
+    let section = window.location.hash.slice(1);
+
+    function apply() {
+      const hasSection = sectionLinks.some(link => link.dataset.section === section);
+      links.forEach(link => {
+        const active = link.dataset.page === page &&
+          (link.dataset.section ? link.dataset.section === section : !hasSection);
+        if (active) link.setAttribute("aria-current", "page");
+        else link.removeAttribute("aria-current");
+      });
+    }
+
+    apply();
+    window.addEventListener("hashchange", () => {
+      section = window.location.hash.slice(1);
+      apply();
     });
+
+    // Ikuti posisi scroll: FAQ menyala saat bagian FAQ terlihat.
+    if (!sectionLinks.length || !("IntersectionObserver" in window)) return;
+    const targets = sectionLinks.map(link => document.getElementById(link.dataset.section)).filter(Boolean);
+    const visible = new Set();
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) visible.add(entry.target.id);
+        else visible.delete(entry.target.id);
+      });
+      section = targets.map(target => target.id).find(id => visible.has(id)) || "";
+      apply();
+    }, { rootMargin: "-40% 0px -40% 0px" });
+    targets.forEach(target => observer.observe(target));
   }
 
   // ------------------------------------------------
