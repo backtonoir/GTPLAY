@@ -1,17 +1,32 @@
 // ==================================================
 // HOW TO PAGE (howto.html)
 // --------------------------------------------------
-// Mengisi IP server & link di "Cara Login per Platform"
-// dari GT.config.LOGIN_GUIDE (js/config.js).
+// Mengisi IP server & link di "Cara Login per Platform".
+//
+// Urutan sumber data (yang pertama terisi dipakai):
+//   1. Admin → Downloads → How To Login (database)
+//   2. GT.config.LOGIN_GUIDE (js/config.js)
+//   3. Untuk GTPLAY APK: link Android di Admin → Downloads
 // ==================================================
 
 (function () {
   const { $all, toast, h } = GT.utils;
-  const guide = GT.config.LOGIN_GUIDE || {};
-
-  const isSafeUrl = url => /^https:\/\//i.test(String(url || "").trim());
-
+  const fromConfig = GT.config.LOGIN_GUIDE || {};
   const DEFAULT_DOMAINS = ["www.growtopia1.com", "www.growtopia2.com"];
+
+  let guide = { ...fromConfig };
+  let fallbacks = {};
+
+  const isSafeUrl = url => /^https:\/\/\S+$/i.test(String(url || "").trim());
+
+  // Field kosong dari admin tidak menimpa nilai config.
+  function merge(base, override) {
+    const out = { ...base };
+    Object.entries(override || {}).forEach(([key, value]) => {
+      if (Array.isArray(value) ? value.length : String(value || "").trim()) out[key] = value;
+    });
+    return out;
+  }
 
   function hostsLines() {
     const ip = String(guide.serverIp || "").trim();
@@ -19,27 +34,27 @@
     return ip ? domains.map(domain => `${ip} ${String(domain).trim()}`) : [];
   }
 
-  function applyText() {
+  function linkFor(key) {
+    const url = String(guide[key] || fallbacks[key] || "").trim();
+    return isSafeUrl(url) ? url : "";
+  }
+
+  function render() {
     const lines = hostsLines();
     if (lines.length) {
       $all("[data-hosts-lines]").forEach(node => {
-        node.replaceChildren(...lines.flatMap((line, i) => [
-          i ? h("br") : null,
-          h("code", {}, line)
-        ].filter(Boolean)));
+        node.replaceChildren(...lines.flatMap((line, i) => (i ? [h("br"), h("code", {}, line)] : [h("code", {}, line)])));
       });
     }
+
     $all("[data-login-text]").forEach(node => {
       const value = guide[node.dataset.loginText];
       if (value) node.textContent = value;
     });
-  }
 
-  function applyLinks(fallbacks) {
     $all("[data-login-link]").forEach(link => {
-      const key = link.dataset.loginLink;
-      const url = String(guide[key] || fallbacks[key] || "").trim();
-      if (isSafeUrl(url)) {
+      const url = linkFor(link.dataset.loginLink);
+      if (url) {
         link.href = url;
         link.removeAttribute("aria-disabled");
         link.removeAttribute("title");
@@ -51,8 +66,13 @@
         link.classList.add("is-disabled");
       }
     });
-  }
 
+    $all("[data-copy-login]").forEach(button => {
+      const available = Boolean(linkFor(button.dataset.copyLogin));
+      button.disabled = !available;
+      button.title = available ? "" : "Link belum tersedia";
+    });
+  }
 
   async function copy(button, value, label) {
     if (!value) {
@@ -70,29 +90,21 @@
     setTimeout(() => { button.textContent = original; }, 1500);
   }
 
-  function bindCopyButtons() {
-    $all("[data-copy-hosts]").forEach(button => {
-      button.addEventListener("click", () => copy(button, hostsLines().join("\n"), "Hosts"));
-    });
-    $all("[data-copy-login]").forEach(button => {
-      const url = String(guide[button.dataset.copyLogin] || "").trim();
-      if (!isSafeUrl(url)) {
-        button.disabled = true;
-        button.title = "Link belum tersedia";
-      }
-      button.addEventListener("click", () => copy(button, isSafeUrl(url) ? url : "", button.dataset.copyLabel || "Link"));
-    });
-  }
+  $all("[data-copy-hosts]").forEach(button => {
+    button.addEventListener("click", () => copy(button, hostsLines().join("\n"), "Hosts"));
+  });
+  $all("[data-copy-login]").forEach(button => {
+    button.addEventListener("click", () => copy(button, linkFor(button.dataset.copyLogin), button.dataset.copyLabel || "Link"));
+  });
 
-  applyText();
-  applyLinks({});
-  bindCopyButtons();
+  render();
 
-  // GTPLAY APK kosong di config → pakai link Android dari Admin → Downloads.
   GT.api.getStoreStatus()
     .then(status => {
-      const downloads = (status && status.downloads) || {};
-      applyLinks({ gtplayApk: downloads.android });
+      if (!status) return;
+      guide = merge(fromConfig, status.loginGuide);
+      fallbacks = { gtplayApk: status.downloads && status.downloads.android };
+      render();
     })
     .catch(() => {});
 

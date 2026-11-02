@@ -64,6 +64,7 @@ GT.api = (function () {
     INVALID_REVIEW: "Pick a rating from 1 to 5 stars. Comments can be up to 300 characters.",
     INVALID_DISCOUNT: "Discount must be a whole number from 0 to 90 percent.",
     INVALID_FEEDBACK: "Pick a type and write 10–500 characters.",
+    INVALID_LOGIN_GUIDE: "Check the IP, domains, and file name: only letters, numbers, dots, and dashes are allowed.",
     FEEDBACK_LIMIT: "You've sent the maximum feedback for today. Please try again tomorrow.",
     FEEDBACK_DUPLICATE: "You already sent this exact message.",
     FEEDBACK_BUSY: "We've received a lot of feedback today. Please try again tomorrow.",
@@ -125,6 +126,37 @@ GT.api = (function () {
     const message = String(text || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
     if (message.length < 10 || message.length > 500) fail("INVALID_FEEDBACK");
     return { kind, growId: check.value, message };
+  }
+
+  // Login guide (Admin → Downloads → How To Login). Sama dengan
+  // admin_set_login_guide di migration_v6_login_guide.sql.
+  const LOGIN_URL_KEYS = ["certificateUrl", "gtplayApk", "powerTunnel", "hostsGo", "virtualHost", "hostsFile", "surge5", "androidHostsUrl", "iosProfileUrl"];
+
+  function normalizeLoginGuide(input) {
+    const guide = input || {};
+    const out = {};
+    const ip = String(guide.serverIp || "").trim();
+    if (ip) {
+      if (ip.length > 64 || !/^[A-Za-z0-9.:-]+$/.test(ip)) fail("INVALID_LOGIN_GUIDE");
+      out.serverIp = ip;
+    }
+    const domains = (Array.isArray(guide.hostsDomains) ? guide.hostsDomains : [])
+      .map(domain => String(domain || "").trim().toLowerCase())
+      .filter(Boolean);
+    if (domains.length > 10 || domains.some(domain => domain.length > 253 || !/^[a-z0-9.-]+$/.test(domain))) fail("INVALID_LOGIN_GUIDE");
+    if (domains.length) out.hostsDomains = domains;
+    LOGIN_URL_KEYS.forEach(key => {
+      const url = String(guide[key] || "").trim();
+      if (!url) return;
+      if (url.length > 500 || !/^https:\/\/\S+$/.test(url)) fail("INVALID_LINK");
+      out[key] = url;
+    });
+    const fileName = String(guide.hostsFileName || "").trim();
+    if (fileName) {
+      if (fileName.length > 100 || !/^[A-Za-z0-9 ._()-]+$/.test(fileName)) fail("INVALID_LOGIN_GUIDE");
+      out.hostsFileName = fileName;
+    }
+    return out;
   }
 
   function validateDownloads(links) {
@@ -340,7 +372,8 @@ GT.api = (function () {
         message: "",
         eta: "",
         ...(saved || {}),
-        downloads: { windows: "", android: "", ios: "", mac: "", ...((saved && saved.downloads) || {}) }
+        downloads: { windows: "", android: "", ios: "", mac: "", ...((saved && saved.downloads) || {}) },
+        loginGuide: (saved && saved.loginGuide) || {}
       };
     }
 
@@ -793,6 +826,13 @@ GT.api = (function () {
           return settings;
         },
 
+        async setLoginGuide(guide) {
+          const settings = loadSettings();
+          settings.loginGuide = normalizeLoginGuide(guide);
+          storage.set(SETTINGS_KEY, settings);
+          return settings;
+        },
+
         async listAnnouncements() {
           return sortAnnouncements(loadAnnouncements());
         },
@@ -1230,6 +1270,10 @@ GT.api = (function () {
             p_ios: links.ios || null,
             p_mac: links.mac || null
           });
+        },
+
+        async setLoginGuide(guide) {
+          return rpc("admin_set_login_guide", { p_guide: normalizeLoginGuide(guide) });
         },
 
         async listAnnouncements() {

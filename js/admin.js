@@ -1488,7 +1488,7 @@
     const error = h("p", { class: "error-text", role: "alert" });
     const submit = h("button", { type: "submit", class: "btn btn-primary" }, "Save links");
 
-    panel.replaceChildren(h("form", {
+    const downloadsForm = h("form", {
       class: "card",
       novalidate: true,
       onsubmit: async event => {
@@ -1526,7 +1526,106 @@
       }),
       error,
       h("div", { class: "modal-actions start no-margin" }, submit, h("a", { class: "btn btn-ghost", href: "/#download", target: "_blank", rel: "noopener" }, "View on site"))
-    ));
+    );
+
+    panel.replaceChildren(h("div", { class: "stack" }, downloadsForm, loginGuideForm(status)));
+  }
+
+  // How To → "Cara Login per Platform": IP server & semua link.
+  function loginGuideForm(status) {
+    if (!status.loginGuide) {
+      return h("div", { class: "card" },
+        h("h2", { class: "card-title" }, "How To Login — IP & links"),
+        h("div", { class: "notice notice-warn" }, h("p", {}, "Run supabase/migration_v6_login_guide.sql in the Supabase SQL Editor to edit these from here. Until then the How To page uses js/config.js (LOGIN_GUIDE)."))
+      );
+    }
+
+    // Isi awal = nilai yang sedang tampil di website (admin, lalu config.js).
+    const fromConfig = GT.config.LOGIN_GUIDE || {};
+    const current = { ...fromConfig };
+    Object.entries(status.loginGuide).forEach(([key, value]) => {
+      if (Array.isArray(value) ? value.length : String(value || "").trim()) current[key] = value;
+    });
+
+    const groups = [
+      ["Server", [
+        ["serverIp", "Server IP", "text", "5.39.13.24", "Used in the Windows & Mac hosts lines."]
+      ]],
+      ["Windows certificate (Growtopia v5.59+)", [
+        ["certificateUrl", "Certificate URL", "url", "https://…", "Download Certificate & Copy Certificate URL buttons."]
+      ]],
+      ["Download links", [
+        ["gtplayApk", "GTPLAY APK", "url", "https://…", "Empty = uses the Android link above."],
+        ["powerTunnel", "PowerTunnel APK", "url", "https://…"],
+        ["hostsGo", "Hosts Go (No Root)", "url", "https://…"],
+        ["virtualHost", "Virtual Host APK", "url", "https://…"],
+        ["hostsFile", "Hosts file for Virtual Host (“here”)", "url", "https://…"],
+        ["surge5", "Surge5 (App Store)", "url", "https://…"]
+      ]],
+      ["Text players copy", [
+        ["androidHostsUrl", "Android hosts URL (PowerTunnel & Hosts Go)", "url", "https://…"],
+        ["iosProfileUrl", "iOS profile URL (Surge5)", "url", "https://…"],
+        ["hostsFileName", "Hosts file name (Virtual Host)", "text", "GTPLAY.txt"]
+      ]]
+    ];
+
+    const inputs = {};
+    const domains = h("textarea", { class: "input mono", id: "lg-hostsDomains", rows: "4", spellcheck: "false", placeholder: "growtopia1.com\ngrowtopia2.com" });
+    domains.value = (Array.isArray(current.hostsDomains) ? current.hostsDomains : []).join("\n");
+    const error = h("p", { class: "error-text", role: "alert" });
+    const submit = h("button", { type: "submit", class: "btn btn-primary" }, "Save login guide");
+
+    function field([key, label, type, placeholder, help]) {
+      inputs[key] = h("input", {
+        class: `input${key === "serverIp" ? " mono" : ""}`,
+        id: `lg-${key}`,
+        type: type === "url" ? "url" : "text",
+        inputmode: type === "url" ? "url" : null,
+        spellcheck: "false",
+        autocomplete: "off",
+        placeholder,
+        value: current[key] || ""
+      });
+      return h("div", { class: "field" },
+        h("label", { class: "label", for: `lg-${key}` }, label),
+        inputs[key],
+        help ? h("p", { class: "help" }, help) : null
+      );
+    }
+
+    return h("form", {
+      class: "card",
+      novalidate: true,
+      onsubmit: async event => {
+        event.preventDefault();
+        error.textContent = "";
+        const guide = Object.fromEntries(Object.entries(inputs).map(([key, input]) => [key, input.value.trim()]));
+        guide.hostsDomains = domains.value.split(/[\s,]+/).map(value => value.trim()).filter(Boolean);
+        submit.disabled = true;
+        try {
+          await admin.setLoginGuide(guide);
+          toast("Login guide saved. The How To page is updated.", "success");
+          renderDashboard();
+        } catch (err) {
+          error.textContent = err.message;
+          submit.disabled = false;
+        }
+      }
+    },
+      h("h2", { class: "card-title" }, "How To Login — IP & links"),
+      h("p", { class: "help downloads-help" }, "Everything on the How To page under “Cara Login per Platform”. Changes go live right after saving. Links must start with https://. An empty field falls back to js/config.js."),
+      groups.map(([title, fields]) => h("fieldset", { class: "admin-fieldset" },
+        h("legend", {}, title),
+        ...fields.map(field),
+        title === "Server" ? h("div", { class: "field" },
+          h("label", { class: "label", for: "lg-hostsDomains" }, "Hosts domains (one per line)"),
+          domains,
+          h("p", { class: "help" }, "Each domain becomes one line: “IP domain”. Max 10.")
+        ) : null
+      )),
+      error,
+      h("div", { class: "modal-actions start no-margin" }, submit, h("a", { class: "btn btn-ghost", href: "/howto#how-to-login", target: "_blank", rel: "noopener" }, "View on site"))
+    );
   }
 
   // ------------------------------------------------
