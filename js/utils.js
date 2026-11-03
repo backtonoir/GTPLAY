@@ -444,6 +444,53 @@ GT.utils = (function () {
     return root;
   }
 
+  // ------------------------------------------------
+  // PENGUMUMAN BERWARNA (gaya blok "diff" Discord)
+  // ------------------------------------------------
+  //   + teks  → hijau  (fitur baru / ditambahkan)
+  //   - teks  → merah  (dihapus / diperbaiki)
+  //   ! teks  → kuning (penting / peringatan)
+  // Baris lain mengikuti aturan formatDescription.
+  // Pembuka/penutup ```diff dari Discord diabaikan.
+
+  const ANN_DIFF = /^([+\-!])\s?(.*)$/;
+  const ANN_TONES = { "+": "add", "-": "remove", "!": "warn" };
+
+  function formatAnnouncement(text) {
+    const lines = descLines(text).filter(line => !/^```/.test(line));
+    const root = h("div", { class: "desc-rich ann-rich" });
+    let plain = [];
+    let diff = null;
+
+    const flushPlain = () => {
+      if (!plain.length) return;
+      const block = formatDescription(plain.join("\n"));
+      root.append(...block.childNodes);
+      plain = [];
+    };
+
+    lines.forEach(line => {
+      const match = line.match(ANN_DIFF);
+      // "- " di awal = merah; "-" tanpa spasi atau "---" tetap teks/garis biasa.
+      const isDiff = match && !DESC_RULE.test(line) && (match[1] !== "-" || /^-\s/.test(line));
+      if (isDiff) {
+        flushPlain();
+        if (!diff) { diff = h("ul", { class: "ann-diff" }); root.append(diff); }
+        if (match[2].trim()) {
+          diff.append(h("li", { class: `ann-${ANN_TONES[match[1]]}` },
+            h("span", { class: "ann-mark", "aria-hidden": "true" }, match[1]),
+            h("span", {}, match[2].trim())
+          ));
+        }
+        return;
+      }
+      diff = null;
+      plain.push(line);
+    });
+    flushPlain();
+    return root;
+  }
+
   // Ringkasan 1–2 kalimat untuk kartu produk.
   function descriptionPreview(text) {
     const lines = descLines(text).filter(line => line && !DESC_RULE.test(line));
@@ -538,6 +585,7 @@ GT.utils = (function () {
     unlockScroll,
     confirmDialog,
     formatDescription,
+    formatAnnouncement,
     descriptionPreview,
     descriptionHasMore,
     copyText,

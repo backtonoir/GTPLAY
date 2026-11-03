@@ -123,7 +123,7 @@ GT.announcementCard = function (item) {
       h("time", { class: "announcement-date", datetime: item.publishedOn || "" }, date)
     ),
     h("h3", {}, item.title),
-    h("p", {}, item.content)
+    GT.utils.formatAnnouncement(item.content)
   );
 };
 

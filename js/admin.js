@@ -1298,7 +1298,7 @@
         h("option", { value, selected: a.category === value }, label)));
     const date = h("input", { class: "input", id: "aDate", type: "date", value: a.publishedOn, required: true });
     const title = h("input", { class: "input", id: "aTitle", value: a.title, maxlength: "120", required: true });
-    const content = h("textarea", { class: "input", id: "aContent", rows: "5", maxlength: "2000", required: true });
+    const content = h("textarea", { class: "input product-desc-input", id: "aContent", rows: "10", maxlength: "2000", required: true });
     content.value = a.content;
     const published = h("input", { type: "checkbox", id: "aPublished", checked: a.published });
     const submit = h("button", { type: "submit", class: "btn btn-primary" }, item ? "Save changes" : "Publish");
@@ -1336,7 +1336,8 @@
         h("div", { class: "field" }, h("label", { class: "label", for: "aCategory" }, "Category"), h("div", { class: "select-field" }, category)),
         h("div", { class: "field" }, h("label", { class: "label", for: "aDate" }, "Date"), date),
         h("div", { class: "field span-2" }, h("label", { class: "label", for: "aTitle" }, "Title"), title),
-        h("div", { class: "field span-2" }, h("label", { class: "label", for: "aContent" }, "Content"), content),
+        h("div", { class: "field span-2" }, h("label", { class: "label", for: "aContent" }, "Content"), content,
+          h("p", { class: "help" }, "Warna per baris: awali dengan + (hijau, baru), - (merah, dihapus/diperbaiki), atau ! (kuning, penting). Baris HURUF BESAR = judul, ・/• = daftar, ━━━ = garis. Blok ```diff dari Discord bisa langsung ditempel.")),
         h("label", { class: "checkbox span-2", for: "aPublished" }, published, h("span", {}, "Published — visible on the website (untick to save as draft)"))
       ),
       error,

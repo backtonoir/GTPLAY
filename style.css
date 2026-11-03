@@ -4687,3 +4687,43 @@ textarea.input {
   padding: 6px;
   overflow-wrap: anywhere;
 }
+
+/* ================================================
+   PENGUMUMAN BERWARNA (+ hijau, - merah, ! kuning)
+   ================================================ */
+.announcement-card .ann-rich {
+  max-width: 78ch;
+}
+
+.announcement-card .ann-rich p {
+  max-width: none;
+}
+
+.ann-diff {
+  list-style: none;
+  display: grid;
+  gap: 2px;
+  margin: 2px 0;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.ann-diff li {
+  display: grid;
+  grid-template-columns: 1.4ch minmax(0, 1fr);
+  gap: 8px;
+}
+
+.ann-mark {
+  font-weight: 700;
+  user-select: none;
+}
+
+.ann-add    { color: #4ade80; }
+.ann-remove { color: #f87171; }
+.ann-warn   { color: var(--amber); }
