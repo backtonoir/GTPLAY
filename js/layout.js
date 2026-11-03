@@ -339,6 +339,8 @@ GT.layout = (function () {
 
   // Link sosial dari config — yang kosong tidak ditampilkan.
   function renderSocial() {
+    // Dikelola js/site.js (WhatsApp + sosial media dari Admin → Server).
+    if (GT.site) return GT.site.renderSocial();
     const list = $("#footerSocial");
     if (!list) return;
 

@@ -83,7 +83,7 @@
     const lines = order.items.map(item => `• ${item.name} x${item.quantity}\n  ${formatRupiah(item.subtotal)}`);
 
     return [
-      `Halo Admin ${GT.config.STORE_NAME}, saya ingin konfirmasi pembayaran.`,
+      `Halo Admin ${GT.utils.storeName()}, saya ingin konfirmasi pembayaran.`,
       "",
       `Order ID: ${order.id}`,
       `GrowID: ${order.growId}`,
@@ -192,7 +192,7 @@
         h("div", { class: "qris-frame" },
           GT.utils.imageWithFallback({
             src: method.image,
-            alt: `QRIS ${GT.config.STORE_NAME}`,
+            alt: `QRIS ${GT.utils.storeName()}`,
             fallback: "QRIS image not found. Please contact admin.",
             className: "qris-media",
             eager: true
@@ -513,7 +513,9 @@
     return;
   }
 
-  refresh();
+  // Tunggu data pembayaran terbaru (Admin → Server) sebelum tampil,
+  // supaya pembeli tidak melihat nomor rekening/QRIS yang lama.
+  (GT.site ? GT.site.ready() : Promise.resolve()).finally(() => refresh());
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && order) refresh(true);

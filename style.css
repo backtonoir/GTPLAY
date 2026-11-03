@@ -222,7 +222,7 @@ h4 {
 
 .btn-primary {
   background: var(--red);
-  color: #fff;
+  color: var(--on-red, #fff);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -449,7 +449,7 @@ h4 {
   padding: 0 6px;
   border-radius: 11px;
   background: var(--red);
-  color: #fff;
+  color: var(--on-red, #fff);
   font-size: 12px;
   font-weight: 800;
   font-family: var(--font-mono);
@@ -542,7 +542,7 @@ h4 {
   pointer-events: none;
   background:
     linear-gradient(0deg, var(--bg) 0%, rgba(9, 9, 11, 0) 28%),
-    radial-gradient(ellipse at 0% 50%, rgba(229, 23, 47, 0.10) 0%, transparent 55%);
+    radial-gradient(ellipse at 0% 50%, color-mix(in srgb, var(--red) 10%, transparent) 0%, transparent 55%);
 }
 
 .hero-inner {
@@ -991,7 +991,7 @@ h4 {
   clip-path: var(--notch);
   font-family: var(--font-pixel);
   font-size: 14px;
-  color: #fff;
+  color: var(--on-red, #fff);
 }
 
 .step h3 {
@@ -1438,7 +1438,7 @@ textarea.input {
 .page-hero {
   padding-block: clamp(40px, 6vw, 64px) clamp(24px, 4vw, 36px);
   background:
-    radial-gradient(circle at 90% 0%, rgba(229, 23, 47, 0.12) 0, transparent 45%),
+    radial-gradient(circle at 90% 0%, color-mix(in srgb, var(--red) 12%, transparent) 0, transparent 45%),
     var(--bg);
   border-bottom: 1px solid var(--border);
 }
@@ -2731,7 +2731,7 @@ textarea.input {
   width: 600px;
   height: 600px;
   max-width: 120vw;
-  background: radial-gradient(circle, rgba(229, 23, 47, 0.1), transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--red) 10%, transparent), transparent 70%);
   top: 15%;
   left: 50%;
   transform: translateX(-50%);
@@ -2762,7 +2762,7 @@ textarea.input {
   height: 8px;
   border-radius: 50%;
   background: var(--red);
-  box-shadow: 0 0 10px rgba(229, 23, 47, 0.6);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--red) 60%, transparent);
   animation: maintenance-pulse 1.5s infinite;
 }
 
@@ -2849,7 +2849,7 @@ textarea.input {
   width: 75%;
   height: 75%;
   border-style: dashed;
-  border-color: rgba(229, 23, 47, 0.5);
+  border-color: color-mix(in srgb, var(--red) 50%, transparent);
   animation: maintenance-rotate 15s linear infinite reverse;
 }
 
@@ -2928,7 +2928,7 @@ textarea.input {
 
 .maintenance-button:hover {
   background: var(--red);
-  color: #fff;
+  color: var(--on-red, #fff);
   transform: translateY(-3px);
 }
 
@@ -3184,9 +3184,9 @@ textarea.input {
   padding: 18px;
   border-radius: var(--radius);
   background:
-    linear-gradient(135deg, rgba(229, 23, 47, 0.16) 0%, rgba(229, 23, 47, 0) 60%),
+    linear-gradient(135deg, color-mix(in srgb, var(--red) 16%, transparent) 0%, transparent 60%),
     var(--surface-2);
-  border: 1px solid rgba(229, 23, 47, 0.45);
+  border: 1px solid color-mix(in srgb, var(--red) 45%, transparent);
   margin-top: 14px;
 }
 
@@ -3246,7 +3246,7 @@ textarea.input {
 
 .maintenance-back {
   background: var(--red);
-  color: #fff;
+  color: var(--on-red, #fff);
 }
 
 .maintenance-back[hidden] {
@@ -3294,7 +3294,7 @@ textarea.input {
 ================================================== */
 
 :root {
-  --chart-line: #e5172f;
+  --chart-line: var(--red);
 }
 
 .hero-landing .hero-inner {
@@ -3563,7 +3563,7 @@ textarea.input {
   height: 48px;
   border-radius: var(--radius-sm);
   background: var(--red);
-  color: #fff;
+  color: var(--on-red, #fff);
 }
 
 .download-icon svg {
@@ -3780,7 +3780,7 @@ textarea.input {
   bottom: 10px;
   padding: 3px 8px;
   background: var(--red);
-  color: #fff;
+  color: var(--on-red, #fff);
   clip-path: var(--notch);
   font-family: var(--font-display);
   font-weight: 900;
@@ -3809,7 +3809,7 @@ textarea.input {
 }
 
 .product-card.on-sale {
-  border-color: rgba(229, 23, 47, 0.35);
+  border-color: color-mix(in srgb, var(--red) 35%, transparent);
 }
 
 .promo-ends {
@@ -4087,7 +4087,7 @@ textarea.input {
 
 .pay-method-chip[aria-pressed="true"] {
   background: var(--red);
-  color: #fff;
+  color: var(--on-red, #fff);
   box-shadow: none;
 }
 
@@ -4410,7 +4410,7 @@ textarea.input {
   clip-path: var(--notch);
   font-family: var(--font-pixel);
   font-size: 14px;
-  color: #fff;
+  color: var(--on-red, #fff);
 }
 
 .profit-card h3 {
@@ -4457,8 +4457,8 @@ textarea.input {
 /* Kotak Profit Tips mengisi sisa baris terakhir */
 .profit-tips {
   grid-column: span 2;
-  border-color: rgba(229, 23, 47, 0.45);
-  background: linear-gradient(135deg, rgba(229, 23, 47, 0.10), var(--surface) 60%);
+  border-color: color-mix(in srgb, var(--red) 45%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--red) 10%, transparent), var(--surface) 60%);
   counter-increment: none;
 }
 
@@ -4734,4 +4734,145 @@ textarea.input {
   min-height: 0;
   font-size: 12px;
   vertical-align: middle;
+}
+
+/* ================================================
+   ADMIN — Pengaturan Website
+   ================================================ */
+.site-settings .admin-fieldset {
+  gap: 10px;
+}
+
+.theme-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.theme-swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--swatch);
+  border: 2px solid var(--border-strong);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease);
+}
+
+.theme-swatch:hover {
+  transform: scale(1.08);
+}
+
+.theme-swatch[aria-pressed="true"] {
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--swatch);
+}
+
+.theme-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.theme-picker {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.theme-picker::-webkit-color-swatch-wrapper { padding: 0; }
+.theme-picker::-webkit-color-swatch { border: 0; border-radius: 50%; }
+.theme-picker::-moz-color-swatch { border: 0; border-radius: 50%; }
+
+.theme-hex {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.site-asset {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px dashed var(--border);
+}
+
+.site-asset:first-of-type {
+  border-top: 0;
+}
+
+.site-asset-preview {
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 90px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background:
+    repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface-3) 0% 50%) 50% / 16px 16px;
+  overflow: hidden;
+}
+
+.site-asset-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.site-asset-preview.wide .site-asset-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.site-asset-info {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.site-asset-info .row-actions {
+  margin-top: 4px;
+}
+
+.site-settings .input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.site-settings-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: 16px;
+  padding: 12px 0;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 2;
+}
+
+@media (max-width: 600px) {
+  .site-asset {
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .site-asset-preview {
+    width: 84px;
+    height: 64px;
+  }
 }

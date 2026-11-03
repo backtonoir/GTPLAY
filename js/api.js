@@ -64,6 +64,8 @@ GT.api = (function () {
     INVALID_REVIEW: "Pick a rating from 1 to 5 stars. Comments can be up to 300 characters.",
     INVALID_DISCOUNT: "Discount must be a whole number from 0 to 90 percent.",
     INVALID_FEEDBACK: "Pick a type and write 10–500 characters.",
+    INVALID_SITE_SETTINGS: "Some settings are not valid: check the name, color, phone numbers, and that every link starts with https://.",
+    ASSET_INVALID: "Images must be PNG, JPG, WEBP, or ICO and smaller than 3 MB.",
     INVALID_LOGIN_GUIDE: "Check the IP, domains, and file name: only letters, numbers, dots, and dashes are allowed.",
     FEEDBACK_LIMIT: "You've sent the maximum feedback for today. Please try again tomorrow.",
     FEEDBACK_DUPLICATE: "You already sent this exact message.",
@@ -81,7 +83,9 @@ GT.api = (function () {
   }
 
   function fail(code, detail) {
-    throw new ApiError(code, message(code, detail));
+    const error = new ApiError(code, message(code, detail));
+    if (detail) error.detail = detail;
+    throw error;
   }
 
   // ------------------------------------------------
@@ -157,6 +161,59 @@ GT.api = (function () {
       out.hostsFileName = fileName;
     }
     return out;
+  }
+
+  // Pengaturan website (Admin → Server). Sama dengan
+  // admin_set_site_settings di migration_v8_site_settings.sql.
+  const SITE_SOCIAL_KEYS = ["instagram", "tiktok", "discord", "youtube", "facebook"];
+  const SITE_IMAGE_KEYS = ["logo", "favicon", "appleTouch", "ogImage", "hero"];
+  const ASSET_TYPES = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/x-icon": "ico", "image/vnd.microsoft.icon": "ico" };
+  const ASSET_MAX_MB = 3;
+
+  function normalizeSiteSettings(input) {
+    const src = input || {};
+    const text = (obj, key, pattern, max) => {
+      const value = String((obj && obj[key]) || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
+      if (!value) return undefined;
+      if (value.length > max || !pattern.test(value)) fail("INVALID_SITE_SETTINGS", key);
+      return value;
+    };
+    const URL_RE = /^https:\/\/[^\s<>"]+$/;
+    // Gambar dari demo disimpan sebagai data:image (hanya di browser ini).
+    const IMG_RE = /^(https:\/\/[^\s<>"]+|data:image\/(png|jpeg|webp|x-icon|vnd\.microsoft\.icon);base64,[A-Za-z0-9+/=]+)$/;
+    const PLAIN = /^[^<>]+$/;
+    const prune = obj => {
+      Object.keys(obj).forEach(key => obj[key] === undefined && delete obj[key]);
+      return Object.keys(obj).length ? obj : undefined;
+    };
+
+    const social = {};
+    SITE_SOCIAL_KEYS.forEach(key => { social[key] = text(src.social, key, URL_RE, 300); });
+    const images = {};
+    SITE_IMAGE_KEYS.forEach(key => { images[key] = text(src.images, key, IMG_RE, GT.api && GT.api.isDemo ? 3000000 : 500); });
+    const pay = src.payment || {};
+    const theme = text(src, "theme", /^#[0-9A-Fa-f]{6}$/, 7);
+
+    return prune({
+      serverName: text(src, "serverName", PLAIN, 40),
+      theme: theme && theme.toLowerCase(),
+      whatsapp: text(src, "whatsapp", /^[0-9]{8,15}$/, 15),
+      social: prune(social),
+      payment: prune({
+        qrisImage: text(pay, "qrisImage", IMG_RE, GT.api && GT.api.isDemo ? 3000000 : 500),
+        gopayNumber: text(pay, "gopayNumber", /^[0-9 +-]{6,20}$/, 20),
+        gopayName: text(pay, "gopayName", PLAIN, 60),
+        bankLabel: text(pay, "bankLabel", PLAIN, 30),
+        bankName: text(pay, "bankName", PLAIN, 30),
+        bankNumber: text(pay, "bankNumber", /^[0-9 -]{4,30}$/, 30),
+        bankHolder: text(pay, "bankHolder", PLAIN, 60)
+      }),
+      images: prune(images)
+    }) || {};
+  }
+
+  function validateAsset(file) {
+    if (!file || !ASSET_TYPES[file.type] || file.size > ASSET_MAX_MB * 1024 * 1024) fail("ASSET_INVALID");
   }
 
   function validateDownloads(links) {
@@ -374,7 +431,8 @@ GT.api = (function () {
         eta: "",
         ...(saved || {}),
         downloads: { windows: "", android: "", ios: "", mac: "", ...((saved && saved.downloads) || {}) },
-        loginGuide: (saved && saved.loginGuide) || {}
+        loginGuide: (saved && saved.loginGuide) || {},
+        site: (saved && saved.site) || {}
       };
     }
 
@@ -834,6 +892,25 @@ GT.api = (function () {
           return settings;
         },
 
+        async setSiteSettings(site) {
+          const settings = loadSettings();
+          settings.site = normalizeSiteSettings(site);
+          storage.set(SETTINGS_KEY, settings);
+          return settings;
+        },
+
+        // Demo: gambar disimpan sebagai data URL di browser ini saja.
+        async uploadSiteAsset(file) {
+          validateAsset(file);
+          if (file.size > 1024 * 1024) throw new ApiError("DEMO", "Demo mode keeps images in this browser only (max 1 MB). Connect Supabase for real uploads.");
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(new ApiError("ASSET_INVALID", MESSAGES.ASSET_INVALID));
+            reader.readAsDataURL(file);
+          });
+        },
+
         async listAnnouncements() {
           return sortAnnouncements(loadAnnouncements());
         },
@@ -1275,6 +1352,24 @@ GT.api = (function () {
 
         async setLoginGuide(guide) {
           return rpc("admin_set_login_guide", { p_guide: normalizeLoginGuide(guide) });
+        },
+
+        async setSiteSettings(site) {
+          return rpc("admin_set_site_settings", { p_settings: normalizeSiteSettings(site) });
+        },
+
+        async uploadSiteAsset(file, kind) {
+          validateAsset(file);
+          const name = String(kind || "asset").replace(/[^a-z0-9-]/gi, "").toLowerCase() || "asset";
+          const path = `${name}-${Date.now()}-${randomCode(6)}.${ASSET_TYPES[file.type]}`;
+          try {
+            const sb = await client();
+            const { error } = await sb.storage.from("site-assets").upload(path, file, { contentType: file.type, cacheControl: "31536000" });
+            if (error) throw error;
+            return sb.storage.from("site-assets").getPublicUrl(path).data.publicUrl;
+          } catch (error) {
+            throw mapError(error);
+          }
         },
 
         async listAnnouncements() {

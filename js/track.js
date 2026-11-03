@@ -35,7 +35,7 @@
 
     actions.append(h("a", {
       class: "btn btn-outline",
-      href: GT.utils.whatsappURL(`Halo Admin ${GT.config.STORE_NAME}, saya ingin menanyakan pesanan ${order.id} (GrowID: ${order.growId}).`),
+      href: GT.utils.whatsappURL(`Halo Admin ${GT.utils.storeName()}, saya ingin menanyakan pesanan ${order.id} (GrowID: ${order.growId}).`),
       target: "_blank",
       rel: "noopener noreferrer"
     }, "Ask admin about this order"));

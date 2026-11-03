@@ -1671,7 +1671,237 @@
         : "SERVER_STATUS_URL in js/config.js is empty. Set it to /api/server-status to show live server stats.")
     );
 
-    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection].filter(Boolean)));
+    let storeStatus = null;
+    try {
+      storeStatus = await GT.api.getStoreStatus();
+    } catch (error) {
+      storeStatus = null;
+    }
+
+    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection, siteSettingsForm(storeStatus)].filter(Boolean)));
+  }
+
+  // ------------------------------------------------
+  // PENGATURAN WEBSITE (nama, tema, gambar, pembayaran, sosial)
+  // --------------------------------------------------
+  // Disimpan di store_settings.site_settings lewat
+  // admin_set_site_settings (migration_v8_site_settings.sql).
+  // Gambar di-upload ke bucket Supabase "site-assets".
+  // ------------------------------------------------
+
+  const THEME_PRESETS = [
+    ["Merah", "#e5172f"], ["Oranye", "#f97316"], ["Kuning", "#eab308"], ["Hijau", "#22c55e"],
+    ["Tosca", "#14b8a6"], ["Biru", "#3b82f6"], ["Ungu", "#8b5cf6"], ["Pink", "#ec4899"]
+  ];
+
+  const SITE_IMAGES = [
+    ["logo", "Logo", "/images/brand/logo.webp", "Header & footer. PNG/WEBP transparan, lebar ±500 px."],
+    ["favicon", "Favicon (ikon tab browser)", "/favicon.svg", "Persegi, 64×64 atau 128×128 px (PNG/ICO)."],
+    ["appleTouch", "Ikon iPhone (Add to Home Screen)", "/images/brand/apple-touch-icon.png", "Persegi 180×180 px, PNG."],
+    ["ogImage", "Gambar preview link (OG Image)", "/images/brand/og-image.jpg", "Muncul saat link dibagikan di WhatsApp/Discord. 1200×630 px."],
+    ["hero", "Gambar hero (Beranda & Store)", "/images/brand/hero-1600.webp", "Lebar 1600 px, JPG/WEBP."]
+  ];
+
+  const SITE_FIELD_LABELS = {
+    serverName: "Nama server", theme: "Warna tema", whatsapp: "Nomor WhatsApp",
+    instagram: "Instagram", tiktok: "TikTok", discord: "Discord", youtube: "YouTube", facebook: "Facebook",
+    qrisImage: "Gambar QRIS", gopayNumber: "Nomor GoPay", gopayName: "Nama akun GoPay",
+    bankLabel: "Label bank", bankName: "Nama bank", bankNumber: "Nomor rekening", bankHolder: "Nama pemilik rekening",
+    logo: "Logo", favicon: "Favicon", appleTouch: "Ikon iPhone", ogImage: "OG Image", hero: "Gambar hero"
+  };
+
+  function siteSettingsForm(status) {
+    if (!status || !status.site) {
+      return h("div", { class: "card" },
+        h("h2", { class: "card-title" }, "Pengaturan Website"),
+        h("div", { class: "notice notice-warn" }, h("p", {}, "Run supabase/migration_v8_site_settings.sql in the Supabase SQL Editor to edit the server name, theme, images, payment details, and social links from here."))
+      );
+    }
+
+    const cfg = GT.config;
+    const site = status.site || {};
+    const pay = site.payment || {};
+    const social = site.social || {};
+    const cfgPay = cfg.PAYMENT_METHODS || {};
+    const images = { ...(site.images || {}), qrisImage: pay.qrisImage || "" };
+    const inputs = {};
+    const error = h("p", { class: "error-text", role: "alert" });
+    const submit = h("button", { type: "submit", class: "btn btn-primary" }, "Simpan pengaturan");
+
+    function input(key, value, attrs) {
+      inputs[key] = h("input", { class: "input", id: `site-${key}`, autocomplete: "off", spellcheck: "false", value: value || "", ...(attrs || {}) });
+      return inputs[key];
+    }
+
+    function field(key, label, control, help) {
+      return h("div", { class: "field" },
+        h("label", { class: "label", for: `site-${key}` }, label),
+        control,
+        help ? h("p", { class: "help" }, help) : null
+      );
+    }
+
+    // ---- Tema
+    let theme = (site.theme || GT.site.DEFAULT_THEME).toLowerCase();
+    const picker = h("input", { type: "color", class: "theme-picker", id: "site-theme", value: theme, "aria-label": "Pilih warna sendiri" });
+    const hexLabel = h("code", { class: "theme-hex" }, theme);
+    const swatches = h("div", { class: "theme-swatches", role: "group", "aria-label": "Warna tema" });
+
+    function setTheme(next) {
+      theme = next.toLowerCase();
+      picker.value = theme;
+      hexLabel.textContent = theme;
+      swatches.querySelectorAll("button").forEach(btn => btn.setAttribute("aria-pressed", String(btn.dataset.color === theme)));
+      // Pratinjau langsung di admin (belum tersimpan).
+      GT.site.previewTheme(theme);
+    }
+
+    THEME_PRESETS.forEach(([label, color]) => {
+      swatches.append(h("button", {
+        type: "button", class: "theme-swatch", title: label, "aria-label": label,
+        dataset: { color }, style: `--swatch:${color}`, onclick: () => setTheme(color)
+      }));
+    });
+    picker.addEventListener("input", () => setTheme(picker.value));
+
+    // ---- Gambar (upload / kembali ke bawaan)
+    function assetRow(key, label, fallbackSrc, help) {
+      const preview = h("img", { class: "site-asset-img", alt: "", src: images[key] || fallbackSrc });
+      const state = h("span", { class: "help" }, images[key] ? "Custom" : "Bawaan");
+      const fileInput = h("input", { type: "file", accept: "image/png,image/jpeg,image/webp,image/x-icon", hidden: true });
+      const uploadBtn = h("button", { type: "button", class: "btn btn-outline btn-sm" }, "Upload");
+      const resetBtn = h("button", {
+        type: "button", class: "btn btn-ghost btn-sm",
+        onclick: () => {
+          images[key] = "";
+          preview.src = fallbackSrc || "";
+          state.textContent = "Bawaan — klik Simpan";
+        }
+      }, "Pakai bawaan");
+
+      uploadBtn.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files && fileInput.files[0];
+        fileInput.value = "";
+        if (!file) return;
+        uploadBtn.disabled = true;
+        uploadBtn.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), " Uploading…");
+        try {
+          const url = await admin.uploadSiteAsset(file, key);
+          images[key] = url;
+          preview.src = url;
+          state.textContent = "Ter-upload — klik Simpan";
+        } catch (err) {
+          toast(err.message, "error");
+        } finally {
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = "Upload";
+        }
+      });
+
+      return h("div", { class: "site-asset" },
+        h("div", { class: `site-asset-preview${key === "ogImage" || key === "hero" ? " wide" : ""}` }, preview),
+        h("div", { class: "site-asset-info" },
+          h("strong", {}, label),
+          h("p", { class: "help" }, help),
+          state,
+          h("div", { class: "row-actions start" }, uploadBtn, resetBtn, fileInput)
+        )
+      );
+    }
+
+    const form = h("form", {
+      class: "card site-settings",
+      novalidate: true,
+      onsubmit: async event => {
+        event.preventDefault();
+        error.textContent = "";
+        Object.values(inputs).forEach(el => el.removeAttribute("aria-invalid"));
+        const value = key => (inputs[key] ? inputs[key].value.trim() : "");
+        const settings = {
+          serverName: value("serverName"),
+          theme,
+          whatsapp: value("whatsapp").replace(/\D/g, ""),
+          social: Object.fromEntries(["instagram", "tiktok", "discord", "youtube", "facebook"].map(key => [key, value(key)])),
+          payment: {
+            qrisImage: images.qrisImage || "",
+            gopayNumber: value("gopayNumber"),
+            gopayName: value("gopayName"),
+            bankLabel: value("bankLabel"),
+            bankName: value("bankName"),
+            bankNumber: value("bankNumber"),
+            bankHolder: value("bankHolder")
+          },
+          images: Object.fromEntries(SITE_IMAGES.map(([key]) => [key, images[key] || ""]))
+        };
+        submit.disabled = true;
+        try {
+          const saved = await admin.setSiteSettings(settings);
+          GT.site.apply((saved && saved.site) || {});
+          toast("Pengaturan website disimpan. Website langsung ter-update.", "success");
+          renderDashboard();
+        } catch (err) {
+          const label = SITE_FIELD_LABELS[err.detail];
+          error.textContent = label ? `${label}: ${err.message}` : err.message;
+          if (err.detail && inputs[err.detail]) {
+            inputs[err.detail].setAttribute("aria-invalid", "true");
+            inputs[err.detail].focus();
+          }
+          submit.disabled = false;
+        }
+      }
+    },
+      h("h2", { class: "card-title" }, "Pengaturan Website"),
+      h("p", { class: "help downloads-help" }, "Berlaku untuk semua halaman begitu disimpan. Kolom yang dikosongkan memakai nilai bawaan dari js/config.js."),
+
+      h("fieldset", { class: "admin-fieldset" },
+        h("legend", {}, "Identitas"),
+        field("serverName", "Nama server", input("serverName", site.serverName || cfg.STORE_NAME, { maxlength: "40" }),
+          "Mengganti tulisan “GTPLAY” di seluruh website (judul, teks, pesan WhatsApp). Order ID tidak berubah."),
+        h("div", { class: "field" },
+          h("label", { class: "label", for: "site-theme" }, "Warna tema"),
+          h("div", { class: "theme-row" }, swatches, h("label", { class: "theme-custom" }, picker, hexLabel)),
+          h("p", { class: "help" }, "Warna tombol, aksen, dan garis. Pratinjau langsung di halaman ini; klik Simpan untuk menerapkan ke website.")
+        )
+      ),
+
+      h("fieldset", { class: "admin-fieldset" },
+        h("legend", {}, "Gambar website"),
+        ...SITE_IMAGES.map(([key, label, fallbackSrc, help]) => assetRow(key, label, fallbackSrc, help))
+      ),
+
+      h("fieldset", { class: "admin-fieldset" },
+        h("legend", {}, "Pembayaran"),
+        h("div", { class: "notice notice-warn" }, h("p", {}, h("strong", {}, "Periksa dua kali. "), "Pembeli mentransfer ke data di bawah ini. Halaman pembayaran langsung memakai data baru setelah disimpan.")),
+        assetRow("qrisImage", "Gambar QRIS", cfg.QRIS_IMAGE ? `/${String(cfg.QRIS_IMAGE).replace(/^\/+/, "")}` : "", "Foto/scan QRIS yang jelas, PNG/JPG."),
+        h("div", { class: "form-grid" },
+          field("gopayNumber", "Nomor GoPay", input("gopayNumber", pay.gopayNumber || (cfgPay.gopay || {}).number, { inputmode: "tel", maxlength: "20" })),
+          field("gopayName", "Nama akun GoPay", input("gopayName", pay.gopayName || (cfgPay.gopay || {}).name, { maxlength: "60" })),
+          field("bankName", "Nama bank", input("bankName", pay.bankName || (cfgPay.bca || {}).bank, { maxlength: "30", placeholder: "BCA" })),
+          field("bankLabel", "Label di halaman bayar", input("bankLabel", pay.bankLabel || (cfgPay.bca || {}).label, { maxlength: "30", placeholder: "Bank BCA" })),
+          field("bankNumber", "Nomor rekening", input("bankNumber", pay.bankNumber || (cfgPay.bca || {}).number, { inputmode: "numeric", maxlength: "30" })),
+          field("bankHolder", "Nama pemilik rekening", input("bankHolder", pay.bankHolder || (cfgPay.bca || {}).name, { maxlength: "60" }))
+        ),
+        h("p", { class: "help" }, "Kosongkan nomor GoPay atau nomor rekening untuk menyembunyikan metode itu dari pembeli (jika juga kosong di config.js).")
+      ),
+
+      h("fieldset", { class: "admin-fieldset" },
+        h("legend", {}, "Kontak & sosial media"),
+        h("div", { class: "form-grid" },
+          field("whatsapp", "WhatsApp admin", input("whatsapp", site.whatsapp || cfg.WHATSAPP_NUMBER, { inputmode: "numeric", maxlength: "15", placeholder: "6281234567890" }),
+            "Format internasional tanpa + atau spasi, contoh 6281234567890."),
+          ...["instagram", "tiktok", "discord", "youtube", "facebook"].map(key =>
+            field(key, SITE_FIELD_LABELS[key], input(key, social[key] || (cfg.SOCIAL_LINKS || {})[key], { type: "url", inputmode: "url", placeholder: "https://…" })))
+        ),
+        h("p", { class: "help" }, "Muncul di footer semua halaman. Link kosong tidak ditampilkan.")
+      ),
+
+      error,
+      h("div", { class: "modal-actions start no-margin site-settings-actions" }, submit, h("a", { class: "btn btn-ghost", href: "/", target: "_blank", rel: "noopener" }, "Lihat website"))
+    );
+
+    setTheme(theme);
+    return form;
   }
 
   // ------------------------------------------------

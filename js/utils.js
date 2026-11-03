@@ -293,22 +293,42 @@ GT.utils = (function () {
   // METODE PEMBAYARAN (dibaca dari GT.config.PAYMENT_METHODS)
   // ------------------------------------------------
 
+  // Data dari Admin → Server (GT.site) diutamakan, lalu js/config.js.
   function paymentMethods() {
     const cfg = (GT.config && GT.config.PAYMENT_METHODS) || {};
+    const pay = (GT.site && GT.site.payment()) || {};
+    const pick = (...values) => values.map(v => String(v || "").trim()).find(Boolean) || "";
     const out = [];
     const qris = cfg.qris || {};
-    if (GT.config.QRIS_IMAGE) {
-      out.push({ id: "qris", kind: "qris", label: qris.label || "QRIS", image: GT.config.QRIS_IMAGE, note: qris.note || "" });
+    const qrisImage = pick(pay.qrisImage, GT.config.QRIS_IMAGE);
+    if (qrisImage) {
+      out.push({ id: "qris", kind: "qris", label: qris.label || "QRIS", image: qrisImage, note: qris.note || "" });
     }
     const gopay = cfg.gopay || {};
-    if (String(gopay.number || "").trim()) {
-      out.push({ id: "gopay", kind: "ewallet", label: gopay.label || "GoPay", number: String(gopay.number).trim(), name: String(gopay.name || "").trim(), note: gopay.note || "" });
+    const gopayNumber = pick(pay.gopayNumber, gopay.number);
+    if (gopayNumber) {
+      out.push({ id: "gopay", kind: "ewallet", label: gopay.label || "GoPay", number: gopayNumber, name: pick(pay.gopayName, gopay.name), note: gopay.note || "" });
     }
     const bca = cfg.bca || {};
-    if (String(bca.number || "").trim()) {
-      out.push({ id: "bca", kind: "bank", label: bca.label || "Bank BCA", bank: bca.bank || "BCA", number: String(bca.number).trim(), name: String(bca.name || "").trim(), note: bca.note || "" });
+    const bankNumber = pick(pay.bankNumber, bca.number);
+    if (bankNumber) {
+      const bankName = pick(pay.bankName, bca.bank, "BCA");
+      out.push({
+        id: "bca",
+        kind: "bank",
+        label: pick(pay.bankLabel, pay.bankName ? `Bank ${pay.bankName}` : "", bca.label, "Bank BCA"),
+        bank: bankName,
+        number: bankNumber,
+        name: pick(pay.bankHolder, bca.name),
+        note: pay.bankName ? `Transfer ke rekening ${bankName} di atas sesuai nominal, lalu upload bukti transfer.` : (bca.note || "")
+      });
     }
     return out;
+  }
+
+  // Nama server/toko (Admin → Server → Nama server).
+  function storeName() {
+    return (GT.site && GT.site.name()) || GT.config.STORE_NAME;
   }
 
   function paymentMethodLabel(id) {
@@ -319,7 +339,8 @@ GT.utils = (function () {
   }
 
   function whatsappURL(message) {
-    return `https://wa.me/${GT.config.WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    const number = (GT.site && GT.site.whatsapp()) || GT.config.WHATSAPP_NUMBER;
+    return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
   }
 
   // ------------------------------------------------
@@ -579,6 +600,7 @@ GT.utils = (function () {
     randomCode,
     openExternal,
     whatsappURL,
+    storeName,
     paymentMethods,
     paymentMethodLabel,
     lockScroll,
