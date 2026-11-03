@@ -86,7 +86,7 @@
     }
     toast(GT.t("{label} disalin.", { label: GT.t(label) }), "success");
     const original = button.textContent;
-    button.textContent = "Copied ✓";
+    button.textContent = GT.t("Copied ✓");
     setTimeout(() => { button.textContent = original; }, 1500);
   }
 

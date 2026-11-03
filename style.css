@@ -4727,3 +4727,11 @@ textarea.input {
 .ann-add    { color: #4ade80; }
 .ann-remove { color: #f87171; }
 .ann-warn   { color: var(--amber); }
+
+.login-copy-inline {
+  margin-left: 6px;
+  padding: 3px 10px;
+  min-height: 0;
+  font-size: 12px;
+  vertical-align: middle;
+}

@@ -649,5 +649,7 @@ GT.i18nPairs = [
   ["Couldn't copy {label}. Copy it manually.", "Gagal menyalin {label}. Salin manual."],
   ["{label} copied.", "{label} disalin."],
   ["Link not available yet", "Link belum tersedia"],
-  ["Certificate URL", "URL Sertifikat"]
+  ["Certificate URL", "URL Sertifikat"],
+  ["Hosts URL", "URL Hosts"],
+  ["Profile URL", "URL Profil"]
 ];
