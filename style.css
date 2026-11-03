@@ -4876,3 +4876,89 @@ textarea.input {
     height: 64px;
   }
 }
+
+/* ================================================
+   KODE KUPON
+   ================================================ */
+.coupon-box {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.coupon-box .label {
+  margin-bottom: 8px;
+}
+
+.coupon-row-input {
+  display: flex;
+  gap: 8px;
+}
+
+.coupon-row-input .input {
+  flex: 1;
+  min-width: 0;
+  text-transform: uppercase;
+}
+
+.coupon-row-input .btn {
+  flex-shrink: 0;
+}
+
+.coupon-box .error-text:empty {
+  display: none;
+}
+
+.coupon-box .error-text {
+  margin-top: 8px;
+}
+
+.coupon-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.coupon-row .value {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.coupon-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.coupon-hint {
+  margin: 10px 0 0;
+}
+
+.check-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.coupon-preview {
+  margin-top: 4px;
+  color: var(--ok);
+}
+
+.coupon-table td {
+  vertical-align: top;
+}

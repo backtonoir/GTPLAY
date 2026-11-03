@@ -651,5 +651,26 @@ GT.i18nPairs = [
   ["Link not available yet", "Link belum tersedia"],
   ["Certificate URL", "URL Sertifikat"],
   ["Hosts URL", "URL Hosts"],
-  ["Profile URL", "URL Profil"]
+  ["Profile URL", "URL Profil"],
+
+  // ---- Kupon (v9) ----
+  ["Coupon", "Kupon"],
+  ["Coupon {code} applied", "Kupon {code} dipakai"],
+  ["you save {amount}", "hemat {amount}"],
+  ["Coupon code", "Kode kupon"],
+  ["Enter a coupon code.", "Masukkan kode kupon."],
+  ["Coupon applied. New total: {amount}", "Kupon dipakai. Total baru: {amount}"],
+  ["Coupon removed.", "Kupon dilepas."],
+  ["Have a coupon code?", "Punya kode kupon?"],
+  ["Have a coupon code? You can enter it on the payment page.", "Punya kode kupon? Kamu bisa memasukkannya di halaman pembayaran."],
+  ["Coupon code not found.", "Kode kupon tidak ditemukan."],
+  ["This coupon is not active.", "Kupon ini sedang tidak aktif."],
+  ["This coupon can't be used yet.", "Kupon ini belum bisa dipakai."],
+  ["This coupon has expired.", "Kupon ini sudah kedaluwarsa."],
+  ["This coupon needs a minimum purchase of {detail}.", "Kupon ini butuh minimal belanja {detail}."],
+  ["This coupon has reached its usage limit.", "Kuota kupon ini sudah habis."],
+  ["You've already used this coupon the maximum number of times.", "Kamu sudah memakai kupon ini sebanyak batas maksimal."],
+  ["Coupons can only be changed before you submit payment.", "Kupon hanya bisa diubah sebelum kamu mengirim bukti pembayaran."],
+  ["Too many wrong coupon codes for this order.", "Terlalu banyak kode kupon salah untuk pesanan ini."],
+  ["Apply", "Pakai"]
 ];

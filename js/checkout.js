@@ -170,6 +170,7 @@
           : null,
         h("div", { class: "summary-row summary-total" }, h("span", {}, "Total Payment"), h("strong", {}, formatRupiah(GT.cart.total())))
       ),
+      h("p", { class: "help coupon-hint" }, "Have a coupon code? You can enter it on the payment page."),
       h("div", { class: "notice notice-info checkout-notice" },
         h("p", {}, GT.t("After you confirm, you'll have {min} minutes to pay with QRIS. Stock is held for you during that time.", { min: GT.config.PAYMENT_WINDOW_MINUTES }))
       ),

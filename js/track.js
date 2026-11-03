@@ -55,7 +55,7 @@
         order.items.some(item => item.listPrice && item.listPrice > item.unitPrice)
           ? infoRow("You save", `−${formatRupiah(order.items.reduce((sum, item) => sum + (item.listPrice && item.listPrice > item.unitPrice ? (item.listPrice - item.unitPrice) * item.quantity : 0), 0))}`)
           : null,
-        h("div", { class: "summary-row summary-total" }, h("span", {}, "Total Payment"), h("strong", {}, formatRupiah(order.total))),
+        ...GT.utils.orderTotalRows(order, "Total Payment"),
         GT.redeemBlock(order),
         order.adminNote && order.status === "rejected"
           ? h("div", { class: "notice notice-danger track-note" }, h("p", {}, GT.t("Admin note: {note}", { note: order.adminNote })))

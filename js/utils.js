@@ -326,6 +326,19 @@ GT.utils = (function () {
     return out;
   }
 
+  // Baris Subtotal → Kupon → Total (pesanan dengan kupon).
+  function orderTotalRows(order, totalLabel) {
+    const rows = [];
+    if (order && Number(order.discount) > 0) {
+      rows.push(h("div", { class: "summary-row" }, h("span", {}, "Subtotal"), h("span", { class: "value" }, formatRupiah(order.subtotal))));
+      rows.push(h("div", { class: "summary-row coupon-row" },
+        h("span", {}, GT.t("Coupon"), " ", h("code", { class: "coupon-code" }, order.couponCode || "")),
+        h("span", { class: "value" }, `−${formatRupiah(order.discount)}`)));
+    }
+    rows.push(h("div", { class: "summary-row summary-total" }, h("span", {}, totalLabel || "Total Payment"), h("strong", {}, formatRupiah(order.total))));
+    return rows;
+  }
+
   // Nama server/toko (Admin → Server → Nama server).
   function storeName() {
     return (GT.site && GT.site.name()) || GT.config.STORE_NAME;
@@ -601,6 +614,7 @@ GT.utils = (function () {
     openExternal,
     whatsappURL,
     storeName,
+    orderTotalRows,
     paymentMethods,
     paymentMethodLabel,
     lockScroll,

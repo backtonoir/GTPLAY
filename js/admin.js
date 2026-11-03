@@ -28,13 +28,14 @@
   // Slug URL bisa beda dari key tab (mis. /admin/announcement).
   // ------------------------------------------------
 
-  const TABS = ["overview", "orders", "products", "reviews", "announcements", "prices", "downloads", "server", "feedback"];
-  const TAB_SLUGS = { overview: "", orders: "orders", products: "products", reviews: "reviews", announcements: "announcements", prices: "prices", downloads: "downloads", server: "server", feedback: "feedback" };
+  const TABS = ["overview", "orders", "products", "reviews", "announcements", "prices", "downloads", "server", "feedback", "coupons"];
+  const TAB_SLUGS = { overview: "", orders: "orders", products: "products", reviews: "reviews", announcements: "announcements", prices: "prices", downloads: "downloads", server: "server", feedback: "feedback", coupons: "coupons" };
   const SLUG_TO_TAB = {
     "": "overview", overview: "overview", orders: "orders", products: "products",
     reviews: "reviews", review: "reviews", announcements: "announcements", announcement: "announcements",
     prices: "prices", price: "prices", "bgl-price": "prices", downloads: "downloads", download: "downloads", server: "server",
-    feedback: "feedback", suggestions: "feedback", bugs: "feedback"
+    feedback: "feedback", suggestions: "feedback", bugs: "feedback",
+    coupons: "coupons", coupon: "coupons", kupon: "coupons"
   };
 
   function usePathRouting() {
@@ -84,7 +85,8 @@
     reviews: [],
     reviewFilter: "pending",
     feedback: [],
-    feedbackFilter: "new"
+    feedbackFilter: "new",
+    coupons: []
   };
 
   const ACTION_LABELS = {
@@ -186,12 +188,13 @@
   // ------------------------------------------------
 
   async function loadData() {
-    const [orders, products, storeStatus, reviews, feedback] = await Promise.all([
+    const [orders, products, storeStatus, reviews, feedback, coupons] = await Promise.all([
       admin.listOrders(),
       admin.listProducts(),
       GT.api.getStoreStatus().catch(() => null),
       admin.listReviews().catch(() => null),
-      admin.listFeedback().catch(() => null)
+      admin.listFeedback().catch(() => null),
+      admin.listCoupons().catch(() => null)
     ]);
     state.orders = orders;
     state.products = products;
@@ -200,6 +203,8 @@
     state.reviewsUnavailable = reviews === null;
     state.feedback = feedback || [];
     state.feedbackUnavailable = feedback === null;
+    state.coupons = coupons || [];
+    state.couponsUnavailable = coupons === null;
   }
 
   function stats() {
@@ -315,6 +320,7 @@
       ["overview", "Overview"],
       ["orders", `Orders (${state.orders.length})`],
       ["products", `Products (${state.products.length})`],
+      ["coupons", "Coupons"],
       ["reviews", state.reviews.filter(r => r.status === "pending").length ? `Reviews (${state.reviews.filter(r => r.status === "pending").length})` : "Reviews"],
       ["announcements", "Announcements"],
       ["prices", "BGL Price"],
@@ -350,6 +356,7 @@
     else if (state.tab === "downloads") renderDownloads(panel);
     else if (state.tab === "server") renderServer(panel);
     else if (state.tab === "feedback") renderFeedback(panel);
+    else if (state.tab === "coupons") renderCoupons(panel);
     else renderOverview(panel);
   }
 
@@ -605,7 +612,7 @@
           h("td", {}, formatRupiah(item.subtotal))
         )))
       ),
-      h("div", { class: "summary-row summary-total" }, h("span", {}, "Total"), h("strong", {}, formatRupiah(order.total))),
+      ...GT.utils.orderTotalRows(order, "Total"),
       proofBlock(order),
       redeemEditor(order, () => close()),
       order.adminNote ? h("div", { class: "notice" }, h("p", {}, h("strong", {}, "Admin note: "), order.adminNote)) : null,
@@ -1983,6 +1990,210 @@
             )
           )))
     ].filter(Boolean));
+  }
+
+  // ------------------------------------------------
+  // KUPON (migration_v9_coupons.sql)
+  // ------------------------------------------------
+
+  function couponDiscountText(c) {
+    if (c.kind === "percent") return `${c.value}%${c.maxDiscount ? ` · maks ${formatRupiah(c.maxDiscount)}` : ""}`;
+    return formatRupiah(c.value);
+  }
+
+  function couponState(c) {
+    const now = Date.now();
+    if (!c.active) return ["tone-muted", "Inactive"];
+    if (c.endsAt && now >= new Date(c.endsAt).getTime()) return ["tone-danger", "Expired"];
+    if (c.startsAt && now < new Date(c.startsAt).getTime()) return ["tone-info", "Scheduled"];
+    if (c.maxUses && c.used >= c.maxUses) return ["tone-warn", "Used up"];
+    return ["tone-ok", "Active"];
+  }
+
+  // ISO → nilai <input type="datetime-local"> (waktu lokal).
+  function toLocalInput(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function renderCoupons(panel) {
+    if (state.couponsUnavailable) {
+      panel.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {}, "Coupons need the latest database. Run supabase/migration_v9_coupons.sql in the Supabase SQL Editor.")));
+      return;
+    }
+
+    async function act(coupon, action) {
+      try {
+        if (action === "delete") {
+          const ok = await confirmDialog({
+            title: `Delete coupon ${coupon.code}?`,
+            message: "Buyers can't use it anymore. Orders that already used it keep their discount.",
+            confirmLabel: "Delete",
+            danger: true
+          });
+          if (!ok) return;
+          await admin.deleteCoupon(coupon.code);
+          toast(`Coupon ${coupon.code} deleted.`, "success");
+        } else {
+          await admin.setCouponActive(coupon.code, action === "activate");
+          toast(action === "activate" ? `Coupon ${coupon.code} activated.` : `Coupon ${coupon.code} deactivated.`, "success");
+        }
+        await reload();
+      } catch (error) {
+        toast(error.message, "error");
+      }
+    }
+
+    const list = state.coupons;
+    panel.replaceChildren(
+      h("div", { class: "admin-top admin-toolbar" },
+        h("p", { class: "muted" }, "Buyers enter the code on the payment page while the order is waiting for payment. Usage from expired or cancelled orders is returned automatically."),
+        h("button", { type: "button", class: "btn btn-primary btn-sm", onclick: () => openCouponForm(null) }, "+ New coupon")
+      ),
+      list.length === 0
+        ? h("div", { class: "state-block" },
+            h("p", { class: "state-title" }, "No coupons yet"),
+            h("button", { type: "button", class: "btn btn-outline", onclick: () => openCouponForm(null) }, "Create your first coupon"))
+        : h("div", { class: "data-table-wrap" },
+            h("table", { class: "data-table coupon-table" },
+              h("thead", {}, h("tr", {},
+                h("th", {}, "Code"), h("th", {}, "Discount"), h("th", {}, "Min. purchase"),
+                h("th", {}, "Usage"), h("th", {}, "Period"), h("th", {}, "Status"), h("th", {}, "")
+              )),
+              h("tbody", {}, list.map(c => {
+                const [tone, label] = couponState(c);
+                const period = c.startsAt || c.endsAt
+                  ? `${c.startsAt ? formatDateTime(c.startsAt) : "Now"} → ${c.endsAt ? formatDateTime(c.endsAt) : "No end"}`
+                  : "Always";
+                return h("tr", {},
+                  h("td", {}, h("code", { class: "coupon-code" }, c.code), c.note ? h("div", { class: "help clamp-1" }, c.note) : null),
+                  h("td", {}, couponDiscountText(c)),
+                  h("td", { class: "num" }, c.minTotal ? formatRupiah(c.minTotal) : "—"),
+                  h("td", {},
+                    h("div", {}, `${c.used}${c.maxUses ? ` / ${c.maxUses}` : ""}`),
+                    h("div", { class: "help" }, `${c.perGrowId ? `${c.perGrowId}× per GrowID · ` : ""}${c.paid} paid · −${formatRupiah(c.discountGiven || 0)}`)
+                  ),
+                  h("td", { class: "help" }, period),
+                  h("td", {}, h("span", { class: `status-badge ${tone}` }, label)),
+                  h("td", {}, h("div", { class: "row-actions" },
+                    h("button", { type: "button", class: "btn btn-ghost btn-sm", onclick: () => openCouponForm(c) }, "Edit"),
+                    c.active
+                      ? h("button", { type: "button", class: "btn btn-outline btn-sm", onclick: () => act(c, "deactivate") }, "Deactivate")
+                      : h("button", { type: "button", class: "btn btn-outline btn-sm", onclick: () => act(c, "activate") }, "Activate"),
+                    h("button", { type: "button", class: "btn btn-danger btn-sm", onclick: () => act(c, "delete") }, "Delete")
+                  ))
+                );
+              }))
+            )
+          )
+    );
+  }
+
+  function openCouponForm(coupon) {
+    const isEdit = Boolean(coupon);
+    const c = coupon || { code: "", kind: "percent", value: "", minTotal: "", maxDiscount: "", maxUses: "", perGrowId: 1, startsAt: null, endsAt: null, active: true, note: "" };
+    const num = (id, value, attrs) => h("input", { class: "input", id, type: "number", min: "0", step: "1", inputmode: "numeric", value: value ?? "", ...(attrs || {}) });
+
+    const code = h("input", { class: "input mono", id: "cCode", value: c.code, maxlength: "24", placeholder: "HEMAT10", autocapitalize: "characters", spellcheck: "false", required: true });
+    const kind = h("select", { class: "input", id: "cKind" },
+      h("option", { value: "percent" }, "Percent (%)"),
+      h("option", { value: "fixed" }, "Fixed amount (Rp)")
+    );
+    kind.value = c.kind;
+    const value = num("cValue", c.value, { min: "1", required: true });
+    const maxDiscount = num("cMaxDiscount", c.maxDiscount, { placeholder: "No limit" });
+    const minTotal = num("cMinTotal", c.minTotal || "", { placeholder: "0" });
+    const maxUses = num("cMaxUses", c.maxUses, { min: "1", placeholder: "Unlimited" });
+    const perGrowId = num("cPerGrowId", c.perGrowId, { min: "1", placeholder: "Unlimited" });
+    const startsAt = h("input", { class: "input", id: "cStarts", type: "datetime-local", value: toLocalInput(c.startsAt) });
+    const endsAt = h("input", { class: "input", id: "cEnds", type: "datetime-local", value: toLocalInput(c.endsAt) });
+    const active = h("input", { type: "checkbox", id: "cActive" });
+    active.checked = c.active !== false;
+    const note = h("input", { class: "input", id: "cNote", value: c.note || "", maxlength: "120", placeholder: "Contoh: promo event Halloween" });
+    const preview = h("p", { class: "help coupon-preview" });
+    const maxDiscountField = h("div", { class: "field" }, h("label", { class: "label", for: "cMaxDiscount" }, "Max. discount (Rp)"), maxDiscount);
+    const valueLabel = h("label", { class: "label", for: "cValue" });
+    const error = h("p", { class: "error-text", role: "alert" });
+    const submit = h("button", { type: "submit", class: "btn btn-primary" }, isEdit ? "Save coupon" : "Create coupon");
+
+    function update() {
+      code.value = code.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+      const isPercent = kind.value === "percent";
+      valueLabel.textContent = isPercent ? "Discount (%) — 1 to 90" : "Discount (Rp)";
+      maxDiscountField.hidden = !isPercent;
+      value.max = isPercent ? "90" : "";
+      const v = Number(value.value) || 0;
+      const sample = Math.max(Number(minTotal.value) || 0, 50000);
+      let d = isPercent ? Math.floor(sample * v / 100) : v;
+      if (isPercent && Number(maxDiscount.value) > 0) d = Math.min(d, Number(maxDiscount.value));
+      d = Math.max(0, Math.min(d, sample - 1));
+      preview.textContent = v > 0
+        ? `Example: an order of ${formatRupiah(sample)} → buyer pays ${formatRupiah(sample - d)} (saves ${formatRupiah(d)}).`
+        : "";
+    }
+    [code, kind, value, maxDiscount, minTotal].forEach(el => el.addEventListener("input", update));
+    kind.addEventListener("change", update);
+
+    const field = (label, control, help) => h("div", { class: "field" }, label, control, help ? h("p", { class: "help" }, help) : null);
+    const lbl = (id, text) => h("label", { class: "label", for: id }, text);
+
+    const form = h("form", {
+      novalidate: true,
+      onsubmit: async event => {
+        event.preventDefault();
+        error.textContent = "";
+        const iso = el => (el.value ? new Date(el.value).toISOString() : null);
+        const payload = {
+          code: code.value,
+          kind: kind.value,
+          value: value.value,
+          minTotal: minTotal.value,
+          maxDiscount: kind.value === "percent" ? maxDiscount.value : "",
+          maxUses: maxUses.value,
+          perGrowId: perGrowId.value,
+          startsAt: iso(startsAt),
+          endsAt: iso(endsAt),
+          active: active.checked,
+          note: note.value
+        };
+        submit.disabled = true;
+        try {
+          await admin.saveCoupon(payload, isEdit ? coupon.code : null);
+          close();
+          toast(isEdit ? `Coupon ${payload.code} saved.` : `Coupon ${payload.code} created.`, "success");
+          await reload();
+        } catch (err) {
+          error.textContent = err.message;
+          submit.disabled = false;
+        }
+      }
+    },
+      h("div", { class: "form-grid" },
+        field(lbl("cCode", "Code"), code, "3–24 characters: letters, numbers, - or _. Buyers type this."),
+        field(lbl("cKind", "Type"), kind),
+        field(valueLabel, value),
+        maxDiscountField,
+        field(lbl("cMinTotal", "Min. purchase (Rp)"), minTotal, "Order subtotal must be at least this."),
+        field(lbl("cMaxUses", "Total uses"), maxUses, "Empty = unlimited."),
+        field(lbl("cPerGrowId", "Uses per GrowID"), perGrowId, "Empty = unlimited."),
+        field(lbl("cStarts", "Starts"), startsAt, "Empty = immediately."),
+        field(lbl("cEnds", "Ends"), endsAt, "Empty = never."),
+        h("div", { class: "field span-2" }, lbl("cNote", "Note (admin only)"), note),
+        h("div", { class: "field span-2" }, h("label", { class: "check-row" }, active, " Active — buyers can use this coupon"))
+      ),
+      preview,
+      error,
+      h("div", { class: "modal-actions" },
+        h("button", { type: "button", class: "btn btn-ghost", onclick: () => close() }, "Cancel"),
+        submit
+      )
+    );
+
+    update();
+    const close = openModal(isEdit ? `Edit coupon ${coupon.code}` : "New coupon", form, { wide: true });
   }
 
   // ------------------------------------------------

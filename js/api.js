@@ -64,6 +64,18 @@ GT.api = (function () {
     INVALID_REVIEW: "Pick a rating from 1 to 5 stars. Comments can be up to 300 characters.",
     INVALID_DISCOUNT: "Discount must be a whole number from 0 to 90 percent.",
     INVALID_FEEDBACK: "Pick a type and write 10–500 characters.",
+    COUPON_NOT_FOUND: "Coupon code not found.",
+    COUPON_INACTIVE: "This coupon is not active.",
+    COUPON_NOT_STARTED: "This coupon can't be used yet.",
+    COUPON_EXPIRED: "This coupon has expired.",
+    COUPON_MIN: "This coupon needs a minimum purchase of {detail}.",
+    COUPON_USED_UP: "This coupon has reached its usage limit.",
+    COUPON_LIMIT_USER: "You've already used this coupon the maximum number of times.",
+    COUPON_NOT_ALLOWED: "Coupons can only be changed before you submit payment.",
+    COUPON_TOO_MANY: "Too many wrong coupon codes for this order.",
+    INVALID_COUPON: "Check the coupon: code 3–24 letters/numbers, percent 1–90, amounts above 0, and the end date after the start date.",
+    COUPON_EXISTS: "A coupon with this code already exists.",
+    COUPON_IN_USE: "This code was already used in orders, so it can't be renamed. Create a new coupon instead.",
     INVALID_SITE_SETTINGS: "Some settings are not valid: check the name, color, phone numbers, and that every link starts with https://.",
     ASSET_INVALID: "Images must be PNG, JPG, WEBP, or ICO and smaller than 3 MB.",
     INVALID_LOGIN_GUIDE: "Check the IP, domains, and file name: only letters, numbers, dots, and dashes are allowed.",
@@ -78,7 +90,7 @@ GT.api = (function () {
     const tr = (text, vars) => (GT.t ? GT.t(text, vars) : text);
     const template = MESSAGES[code];
     if (!template) return detail || tr("Something went wrong.");
-    const text = tr(template, { max: MAX_LINES, mb: GT.config.MAX_PROOF_MB });
+    const text = tr(template, { max: MAX_LINES, mb: GT.config.MAX_PROOF_MB, detail: detail || "" });
     return code === "REDEEM_DUPLICATE" && detail ? `${text} (${detail})` : text;
   }
 
@@ -161,6 +173,48 @@ GT.api = (function () {
       out.hostsFileName = fileName;
     }
     return out;
+  }
+
+  // ------------------------------------------------
+  // KUPON — aturan sama dengan migration_v9_coupons.sql
+  // ------------------------------------------------
+  const COUPON_CODE = /^[A-Z0-9_-]{3,24}$/;
+
+  function normalizeCoupon(input) {
+    const c = input || {};
+    const int = value => (value === "" || value === null || value === undefined ? null : Number(value));
+    const out = {
+      code: String(c.code || "").trim().toUpperCase(),
+      kind: c.kind === "fixed" ? "fixed" : c.kind === "percent" ? "percent" : "",
+      value: int(c.value),
+      minTotal: int(c.minTotal) || 0,
+      maxDiscount: c.kind === "percent" ? int(c.maxDiscount) : null,
+      maxUses: int(c.maxUses),
+      perGrowId: int(c.perGrowId),
+      startsAt: c.startsAt || null,
+      endsAt: c.endsAt || null,
+      active: c.active !== false,
+      note: String(c.note || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim()
+    };
+    const posInt = v => Number.isInteger(v) && v > 0;
+    const okOptional = v => v === null || posInt(v);
+    const time = v => (v ? new Date(v).getTime() : null);
+    if (!COUPON_CODE.test(out.code) || !out.kind || !posInt(out.value) ||
+        (out.kind === "percent" && out.value > 90) ||
+        !Number.isInteger(out.minTotal) || out.minTotal < 0 ||
+        !okOptional(out.maxDiscount) || !okOptional(out.maxUses) || !okOptional(out.perGrowId) ||
+        (out.startsAt && Number.isNaN(time(out.startsAt))) || (out.endsAt && Number.isNaN(time(out.endsAt))) ||
+        (out.startsAt && out.endsAt && time(out.endsAt) <= time(out.startsAt)) ||
+        out.note.length > 120) {
+      fail("INVALID_COUPON");
+    }
+    return out;
+  }
+
+  function couponDiscount(coupon, subtotal) {
+    let discount = coupon.kind === "percent" ? Math.floor(subtotal * coupon.value / 100) : coupon.value;
+    if (coupon.kind === "percent" && coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
+    return Math.max(0, Math.min(discount, subtotal - 1));
   }
 
   // Pengaturan website (Admin → Server). Sama dengan
@@ -395,6 +449,30 @@ GT.api = (function () {
     const PRICES_KEY = "gtplay:demo:lock-prices";
     const REVIEWS_KEY = "gtplay:demo:reviews";
     const FEEDBACK_KEY = "gtplay:demo:feedback";
+    const COUPONS_KEY = "gtplay:demo:coupons";
+
+    function loadCoupons() {
+      const saved = storage.get(COUPONS_KEY, []);
+      return Array.isArray(saved) ? saved : [];
+    }
+
+    function couponUsed(orders, code, growId, excludeOrder) {
+      return Object.values(orders).filter(o =>
+        o.couponCode === code && !RELEASED.includes(o.status) &&
+        (!growId || o.growId.toLowerCase() === growId.toLowerCase()) &&
+        o.id !== excludeOrder
+      ).length;
+    }
+
+    function couponRow(orders, coupon) {
+      const paid = Object.values(orders).filter(o => o.couponCode === coupon.code && ["payment_verified", "processing", "completed"].includes(o.status));
+      return {
+        ...coupon,
+        used: couponUsed(orders, coupon.code, null, null),
+        paid: paid.length,
+        discountGiven: paid.reduce((sum, o) => sum + (o.discount || 0), 0)
+      };
+    }
 
     function loadFeedback() {
       const saved = storage.get(FEEDBACK_KEY, []);
@@ -646,6 +724,9 @@ GT.api = (function () {
           status: "pending_payment",
           items: lines,
           total: lines.reduce((sum, line) => sum + line.subtotal, 0),
+          subtotal: lines.reduce((sum, line) => sum + line.subtotal, 0),
+          discount: 0,
+          couponCode: null,
           createdAt: createdAt.toISOString(),
           updatedAt: createdAt.toISOString(),
           expiresAt: new Date(createdAt.getTime() + GT.config.PAYMENT_WINDOW_MINUTES * 60000).toISOString(),
@@ -683,6 +764,45 @@ GT.api = (function () {
         pushEvent(order, "payment_submitted", "Payment proof submitted.", "customer");
         saveOrders(orders);
 
+        return publicOrder(order);
+      },
+
+      async applyCoupon(orderId, accessCode, rawCode) {
+        const { orders, order } = findOwned(orderId, accessCode);
+        if (order.status !== "pending_payment" || Date.now() >= new Date(order.expiresAt).getTime()) fail("COUPON_NOT_ALLOWED");
+        if ((order.couponAttempts || 0) >= 10) fail("COUPON_TOO_MANY");
+        const code = String(rawCode || "").trim().toUpperCase();
+        const coupon = loadCoupons().find(c => c.code === code);
+        const subtotal = order.subtotal ?? order.total;
+        const now = Date.now();
+        let error = null;
+        if (!coupon || !COUPON_CODE.test(code)) error = "COUPON_NOT_FOUND";
+        else if (!coupon.active) error = "COUPON_INACTIVE";
+        else if (coupon.startsAt && now < new Date(coupon.startsAt).getTime()) error = "COUPON_NOT_STARTED";
+        else if (coupon.endsAt && now >= new Date(coupon.endsAt).getTime()) error = "COUPON_EXPIRED";
+        else if (subtotal < coupon.minTotal) fail("COUPON_MIN", GT.utils.formatRupiah(coupon.minTotal));
+        else if (coupon.maxUses && couponUsed(orders, code, null, order.id) >= coupon.maxUses) error = "COUPON_USED_UP";
+        else if (coupon.perGrowId && couponUsed(orders, code, order.growId, order.id) >= coupon.perGrowId) error = "COUPON_LIMIT_USER";
+        if (error) {
+          order.couponAttempts = (order.couponAttempts || 0) + 1;
+          saveOrders(orders);
+          fail(error);
+        }
+        const discount = couponDiscount(coupon, subtotal);
+        Object.assign(order, { subtotal, discount, total: subtotal - discount, couponCode: code, updatedAt: new Date().toISOString() });
+        order.events.push({ status: order.status, note: `Coupon ${code} applied (-${GT.utils.formatRupiah(discount)}).`, actor: "customer", at: new Date().toISOString() });
+        saveOrders(orders);
+        return publicOrder(order);
+      },
+
+      async removeCoupon(orderId, accessCode) {
+        const { orders, order } = findOwned(orderId, accessCode);
+        if (order.status !== "pending_payment" || Date.now() >= new Date(order.expiresAt).getTime()) fail("COUPON_NOT_ALLOWED");
+        if (order.couponCode) {
+          order.events.push({ status: order.status, note: `Coupon ${order.couponCode} removed.`, actor: "customer", at: new Date().toISOString() });
+          Object.assign(order, { total: order.subtotal ?? order.total, discount: 0, couponCode: null, updatedAt: new Date().toISOString() });
+          saveOrders(orders);
+        }
         return publicOrder(order);
       },
 
@@ -795,6 +915,37 @@ GT.api = (function () {
 
         async listFeedback() {
           return loadFeedback();
+        },
+
+        async listCoupons() {
+          const orders = sweepExpired();
+          return loadCoupons()
+            .map(c => couponRow(orders, c))
+            .sort((a, b) => (b.active - a.active) || String(b.createdAt).localeCompare(String(a.createdAt)));
+        },
+
+        async saveCoupon(input, originalCode) {
+          const coupon = normalizeCoupon(input);
+          const list = loadCoupons();
+          const orig = originalCode ? String(originalCode).toUpperCase() : null;
+          if (orig && orig !== coupon.code) {
+            if (Object.values(loadOrders()).some(o => o.couponCode === orig)) fail("COUPON_IN_USE");
+            if (list.some(c => c.code === coupon.code)) fail("COUPON_EXISTS");
+          } else if (!orig && list.some(c => c.code === coupon.code)) {
+            fail("COUPON_EXISTS");
+          }
+          const existing = list.find(c => c.code === (orig || coupon.code));
+          const next = list.filter(c => c.code !== (orig || coupon.code));
+          next.push({ ...coupon, createdAt: existing ? existing.createdAt : new Date().toISOString() });
+          storage.set(COUPONS_KEY, next);
+        },
+
+        async setCouponActive(code, active) {
+          storage.set(COUPONS_KEY, loadCoupons().map(c => (c.code === code ? { ...c, active: Boolean(active) } : c)));
+        },
+
+        async deleteCoupon(code) {
+          storage.set(COUPONS_KEY, loadCoupons().filter(c => c.code !== code));
         },
 
         async setFeedbackStatus(id, status) {
@@ -957,6 +1108,7 @@ GT.api = (function () {
           storage.remove(PRICES_KEY);
           storage.remove(REVIEWS_KEY);
           storage.remove(FEEDBACK_KEY);
+          storage.remove(COUPONS_KEY);
         }
       }
     };
@@ -1245,6 +1397,19 @@ GT.api = (function () {
         }));
       },
 
+      async applyCoupon(orderId, accessCode, code) {
+        const result = await rpc("apply_coupon", { p_order_id: orderId, p_access_code: accessCode, p_code: String(code || "").trim() });
+        if (!result || !result.ok) {
+          const errCode = String((result && result.error) || "GT:COUPON_NOT_FOUND").replace(/^GT:/, "");
+          fail(errCode);
+        }
+        return mapOrder(result.order);
+      },
+
+      async removeCoupon(orderId, accessCode) {
+        return mapOrder(await rpc("remove_coupon", { p_order_id: orderId, p_access_code: accessCode }));
+      },
+
       async cancelOrder(orderId, accessCode) {
         return mapOrder(await rpc("cancel_order", { p_order_id: orderId, p_access_code: accessCode }));
       },
@@ -1421,6 +1586,23 @@ GT.api = (function () {
 
         async listFeedback() {
           return rpc("admin_list_feedback");
+        },
+
+        async listCoupons() {
+          return rpc("admin_list_coupons");
+        },
+
+        async saveCoupon(input, originalCode) {
+          const coupon = normalizeCoupon(input);
+          return rpc("admin_upsert_coupon", { p_coupon: coupon, p_original_code: originalCode || null });
+        },
+
+        async setCouponActive(code, active) {
+          return rpc("admin_set_coupon_active", { p_code: code, p_active: Boolean(active) });
+        },
+
+        async deleteCoupon(code) {
+          return rpc("admin_delete_coupon", { p_code: code });
         },
 
         async setFeedbackStatus(id, status) {

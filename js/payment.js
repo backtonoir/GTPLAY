@@ -74,8 +74,82 @@
           )
         ))
       ),
-      h("div", { class: "summary-row summary-total" }, h("span", {}, "Total Payment"), h("strong", {}, formatRupiah(order.total))),
+      ...GT.utils.orderTotalRows(order, "Total Payment"),
+      // Kotak kupon hanya bila database sudah mendukung kupon (migration v9).
+      order.status === "pending_payment" && "discount" in order ? couponBox() : null,
       h("p", { class: "help access-help" }, "Save your Order ID and access code — you need both to track this order from another device.")
+    );
+  }
+
+  // ------------------------------------------------
+  // KODE KUPON (hanya saat menunggu pembayaran)
+  // ------------------------------------------------
+
+  function couponBox() {
+    if (order.couponCode) {
+      const removeBtn = h("button", {
+        type: "button",
+        class: "btn btn-ghost btn-sm",
+        onclick: async () => {
+          removeBtn.disabled = true;
+          try {
+            order = await GT.api.removeCoupon(orderId, accessCode);
+            toast("Coupon removed.", "info");
+            render();
+          } catch (error) {
+            toast(error.message, "error");
+            removeBtn.disabled = false;
+          }
+        }
+      }, "Remove");
+      return h("div", { class: "coupon-box coupon-applied" },
+        h("span", { class: "coupon-applied-text" },
+          h("strong", {}, GT.t("Coupon {code} applied", { code: order.couponCode })), " — ",
+          GT.t("you save {amount}", { amount: formatRupiah(order.discount) })),
+        removeBtn
+      );
+    }
+
+    const input = h("input", {
+      class: "input mono coupon-input",
+      id: "couponCode",
+      placeholder: GT.t("Coupon code"),
+      autocomplete: "off",
+      autocapitalize: "characters",
+      spellcheck: "false",
+      maxlength: "24",
+      "aria-label": GT.t("Coupon code")
+    });
+    const error = h("p", { class: "error-text", role: "alert" });
+    const apply = h("button", { type: "submit", class: "btn btn-outline" }, "Apply");
+
+    return h("form", {
+      class: "coupon-box",
+      novalidate: true,
+      onsubmit: async event => {
+        event.preventDefault();
+        const code = input.value.trim().toUpperCase();
+        error.textContent = "";
+        if (!code) {
+          error.textContent = GT.t("Enter a coupon code.");
+          input.focus();
+          return;
+        }
+        apply.disabled = true;
+        try {
+          order = await GT.api.applyCoupon(orderId, accessCode, code);
+          toast(GT.t("Coupon applied. New total: {amount}", { amount: formatRupiah(order.total) }), "success");
+          render();
+        } catch (err) {
+          error.textContent = err.message;
+          apply.disabled = false;
+          input.focus();
+        }
+      }
+    },
+      h("label", { class: "label", for: "couponCode" }, "Have a coupon code?"),
+      h("div", { class: "coupon-row-input" }, input, apply),
+      error
     );
   }
 
@@ -92,6 +166,7 @@
       ...lines,
       "",
       `Total Item: ${order.items.reduce((sum, item) => sum + item.quantity, 0)}`,
+      ...(order.discount > 0 ? [`Subtotal: ${formatRupiah(order.subtotal)}`, `Kupon ${order.couponCode}: -${formatRupiah(order.discount)}`] : []),
       `Total Pembayaran: ${formatRupiah(order.total)}`,
       "",
       `Saya sudah melakukan pembayaran melalui ${GT.utils.paymentMethodLabel(selectedMethod || (order && order.paymentMethod) || "qris")}.`,
