@@ -76,6 +76,8 @@ GT.api = (function () {
     INVALID_COUPON: "Check the coupon: code 3–24 letters/numbers, percent 1–90, amounts above 0, and the end date after the start date.",
     COUPON_EXISTS: "A coupon with this code already exists.",
     COUPON_IN_USE: "This code was already used in orders, so it can't be renamed. Create a new coupon instead.",
+    INVALID_CLEANUP: "Choose an age between 7 and 3650 days.",
+    CLEANUP_CONFIRM: "Type HAPUS to confirm the cleanup.",
     INVALID_SITE_SETTINGS: "Some settings are not valid: check the name, color, phone numbers, and that every link starts with https://.",
     ASSET_INVALID: "Images must be PNG, JPG, WEBP, or ICO and smaller than 3 MB.",
     INVALID_LOGIN_GUIDE: "Check the IP, domains, and file name: only letters, numbers, dots, and dashes are allowed.",
@@ -917,6 +919,69 @@ GT.api = (function () {
           return loadFeedback();
         },
 
+        async exportBackup() {
+          const orders = Object.values(loadOrders()).map(o => {
+            const copy = { ...o };
+            delete copy.accessCode;
+            return copy;
+          });
+          return {
+            format: "gtplay-backup",
+            version: 1,
+            demo: true,
+            exportedAt: new Date().toISOString(),
+            tables: {
+              products: loadProducts(),
+              orders,
+              coupons: loadCoupons(),
+              reviews: loadReviews(),
+              feedback: loadFeedback(),
+              announcements: loadAnnouncements(),
+              lock_prices: loadPrices(),
+              store_settings: [loadSettings()]
+            }
+          };
+        },
+
+        async cleanupPreview(days) {
+          if (!Number.isInteger(days) || days < 7 || days > 3650) fail("INVALID_CLEANUP");
+          const orders = Object.values(sweepExpired());
+          const cutoff = Date.now() - days * 86400000;
+          const approved = new Set(loadReviews().filter(r => r.status === "approved").map(r => r.orderId));
+          const candidates = orders.filter(o => ["completed", "cancelled", "rejected", "expired"].includes(o.status) &&
+            new Date(o.updatedAt).getTime() < cutoff && !approved.has(o.id));
+          return {
+            days,
+            orders: candidates.length,
+            proofs: candidates.filter(o => o.proofName).length,
+            feedback: loadFeedback().filter(f => f.status === "read").length,
+            totalOrders: orders.length,
+            activeOrders: orders.filter(o => ["pending_payment", "payment_submitted", "payment_verified", "processing"].includes(o.status)).length,
+            databaseBytes: null
+          };
+        },
+
+        async cleanupOldData(days, confirm) {
+          if (!Number.isInteger(days) || days < 7 || days > 3650) fail("INVALID_CLEANUP");
+          if (confirm !== "HAPUS") fail("CLEANUP_CONFIRM");
+          const orders = sweepExpired();
+          const cutoff = Date.now() - days * 86400000;
+          const approved = new Set(loadReviews().filter(r => r.status === "approved").map(r => r.orderId));
+          let removed = 0;
+          Object.values(orders).forEach(o => {
+            if (["completed", "cancelled", "rejected", "expired"].includes(o.status) && new Date(o.updatedAt).getTime() < cutoff && !approved.has(o.id)) {
+              delete orders[o.id];
+              removed += 1;
+            }
+          });
+          saveOrders(orders);
+          saveReviews(loadReviews().filter(r => orders[r.orderId]));
+          const feedback = loadFeedback();
+          const keep = feedback.filter(f => f.status !== "read");
+          saveFeedback(keep);
+          return { orders: removed, feedback: feedback.length - keep.length, proofs: 0, proofErrors: 0 };
+        },
+
         async listCoupons() {
           const orders = sweepExpired();
           return loadCoupons()
@@ -1590,6 +1655,30 @@ GT.api = (function () {
 
         async listCoupons() {
           return rpc("admin_list_coupons");
+        },
+
+        async exportBackup() {
+          return rpc("admin_export_backup");
+        },
+
+        async cleanupPreview(days) {
+          return rpc("admin_cleanup_preview", { p_days: days });
+        },
+
+        // Hapus data di database, lalu file bukti bayarnya di Storage.
+        async cleanupOldData(days, confirm) {
+          const result = await rpc("admin_cleanup_old_data", { p_days: days, p_confirm: confirm });
+          const paths = Array.isArray(result.proofPaths) ? result.proofPaths : [];
+          let proofs = 0;
+          let proofErrors = 0;
+          const sb = await client();
+          for (let i = 0; i < paths.length; i += 100) {
+            const batch = paths.slice(i, i + 100);
+            const { data, error } = await sb.storage.from("payment-proofs").remove(batch);
+            if (error) proofErrors += batch.length;
+            else proofs += (data || []).length;
+          }
+          return { orders: result.orders, feedback: result.feedback, proofs, proofErrors };
         },
 
         async saveCoupon(input, originalCode) {

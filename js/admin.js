@@ -1685,7 +1685,156 @@
       storeStatus = null;
     }
 
-    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection, siteSettingsForm(storeStatus)].filter(Boolean)));
+    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection, siteSettingsForm(storeStatus), backupCard()].filter(Boolean)));
+  }
+
+  // ------------------------------------------------
+  // BACKUP & PEMBERSIHAN (migration_v10_backup_cleanup.sql)
+  // --------------------------------------------------
+  // 1. Download Backup → file JSON, tidak menghapus apa pun.
+  // 2. Bersihkan data lama → hanya aktif setelah backup
+  //    di-download di sesi ini + ketik HAPUS.
+  // ------------------------------------------------
+
+  let backupDownloadedAt = null;
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes)) return "—";
+    if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  function backupCard() {
+    const downloadBtn = h("button", { type: "button", class: "btn btn-primary" }, "Download Backup");
+    const downloadNote = h("p", { class: "help" }, backupDownloadedAt
+      ? `Backup downloaded at ${formatDateTime(backupDownloadedAt)}.`
+      : "Downloads everything as one .json file. Nothing is deleted.");
+
+    const days = h("select", { class: "input", id: "cleanupDays" },
+      ...[[30, "30 days"], [60, "60 days"], [90, "90 days"], [180, "6 months"], [365, "1 year"]].map(([value, label]) => h("option", { value }, label)));
+    days.value = "30";
+    const preview = h("div", { class: "cleanup-preview" }, h("p", { class: "help" }, "Loading…"));
+    const confirmInput = h("input", { class: "input mono", id: "cleanupConfirm", placeholder: "HAPUS", autocomplete: "off", maxlength: "5" });
+    const cleanBtn = h("button", { type: "button", class: "btn btn-danger" }, "Clean up old data");
+    const error = h("p", { class: "error-text", role: "alert" });
+    let candidates = 0;
+
+    function refreshButtons() {
+      const ready = Boolean(backupDownloadedAt) && confirmInput.value.trim() === "HAPUS" && candidates > 0;
+      cleanBtn.disabled = !ready;
+      cleanBtn.title = !backupDownloadedAt ? "Download a backup first" : candidates === 0 ? "Nothing to clean up" : "";
+    }
+
+    async function loadPreview() {
+      preview.replaceChildren(h("p", { class: "help" }, "Loading…"));
+      try {
+        const p = await admin.cleanupPreview(Number(days.value));
+        candidates = p.orders + p.feedback;
+        preview.replaceChildren(
+          h("ul", { class: "cleanup-list" },
+            h("li", {}, h("strong", {}, String(p.orders)), ` finished orders older than ${p.days} days (completed, cancelled, rejected, expired)`),
+            h("li", {}, h("strong", {}, String(p.proofs)), " payment proof photos of those orders"),
+            h("li", {}, h("strong", {}, String(p.feedback)), " feedback messages marked as read")
+          ),
+          h("p", { class: "help" },
+            `Kept: ${p.activeOrders} active orders, products, coupons, settings, announcements, and orders with a published review. ` +
+            `Total orders now: ${p.totalOrders}${p.databaseBytes ? ` · database size ${formatBytes(p.databaseBytes)}` : ""}.`)
+        );
+      } catch (err) {
+        candidates = 0;
+        preview.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {},
+          /does not exist|could not find|schema cache|Database belum/i.test(err.message)
+            ? "Run supabase/migration_v10_backup_cleanup.sql in the Supabase SQL Editor to enable backup and cleanup."
+            : err.message)));
+      }
+      refreshButtons();
+    }
+
+    downloadBtn.addEventListener("click", async () => {
+      downloadBtn.disabled = true;
+      downloadBtn.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), " Preparing…");
+      try {
+        const data = await admin.exportBackup();
+        const stamp = new Date();
+        const pad = n => String(n).padStart(2, "0");
+        const name = `${GT.utils.storeName().replace(/[^A-Za-z0-9_-]+/g, "-").toLowerCase()}-backup-${stamp.getFullYear()}${pad(stamp.getMonth() + 1)}${pad(stamp.getDate())}-${pad(stamp.getHours())}${pad(stamp.getMinutes())}.json`;
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = h("a", { href: url, download: name, hidden: true });
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        backupDownloadedAt = new Date().toISOString();
+        const counts = Object.entries(data.tables || {}).map(([table, rows]) => `${table} ${Array.isArray(rows) ? rows.length : 0}`).join(" · ");
+        downloadNote.textContent = `Saved as ${name} (${formatBytes(blob.size)}). ${counts}`;
+        toast("Backup downloaded. Check that the file is in your Downloads folder.", "success");
+      } catch (err) {
+        toast(/does not exist|could not find|schema cache|Database belum/i.test(err.message)
+          ? "Run supabase/migration_v10_backup_cleanup.sql first."
+          : err.message, "error");
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = "Download Backup";
+        refreshButtons();
+      }
+    });
+
+    days.addEventListener("change", loadPreview);
+    confirmInput.addEventListener("input", () => {
+      confirmInput.value = confirmInput.value.toUpperCase();
+      refreshButtons();
+    });
+
+    cleanBtn.addEventListener("click", async () => {
+      error.textContent = "";
+      const ok = await confirmDialog({
+        title: "Delete old data permanently?",
+        message: "The selected orders, their payment proof photos, and read feedback will be deleted. This can't be undone — only your backup file keeps a copy.",
+        confirmLabel: "Delete permanently",
+        danger: true
+      });
+      if (!ok) return;
+      cleanBtn.disabled = true;
+      cleanBtn.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), " Cleaning…");
+      try {
+        const result = await admin.cleanupOldData(Number(days.value), confirmInput.value.trim());
+        toast(`Deleted ${result.orders} orders, ${result.proofs} proof photos, ${result.feedback} feedback.`, "success");
+        if (result.proofErrors) toast(`${result.proofErrors} proof photos couldn't be deleted. Remove them in Supabase → Storage → payment-proofs.`, "error");
+        confirmInput.value = "";
+        await reload();
+      } catch (err) {
+        error.textContent = err.message;
+        cleanBtn.textContent = "Clean up old data";
+        refreshButtons();
+      }
+    });
+
+    loadPreview();
+
+    return h("section", { class: "card backup-card" },
+      h("h2", { class: "card-title" }, "Backup & Cleanup"),
+      h("p", { class: "help downloads-help" }, "Keep your Supabase free plan from filling up: download a backup, then remove old finished orders and their payment photos."),
+
+      h("fieldset", { class: "admin-fieldset" },
+        h("legend", {}, "1 · Backup"),
+        h("div", { class: "row-actions start" }, downloadBtn),
+        downloadNote,
+        h("p", { class: "help" }, "Includes products, orders, items, history, coupons, reviews, feedback, announcements, BGL prices, and settings. Payment proof photos are not included. Access codes and IP hashes are left out for safety.")
+      ),
+
+      h("fieldset", { class: "admin-fieldset" },
+        h("legend", {}, "2 · Clean up old data"),
+        h("div", { class: "form-grid" },
+          h("div", { class: "field" }, h("label", { class: "label", for: "cleanupDays" }, "Delete finished orders older than"), days),
+          h("div", { class: "field" }, h("label", { class: "label", for: "cleanupConfirm" }, "Type HAPUS to confirm"), confirmInput)
+        ),
+        preview,
+        error,
+        h("div", { class: "row-actions start" }, cleanBtn),
+        h("p", { class: "help" }, "Unlocks after you download a backup in this session. Coupon usage limits only count orders that still exist.")
+      )
+    );
   }
 
   // ------------------------------------------------

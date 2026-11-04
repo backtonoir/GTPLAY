@@ -4962,3 +4962,22 @@ textarea.input {
 .coupon-table td {
   vertical-align: top;
 }
+
+/* Admin: Backup & Cleanup */
+.cleanup-list {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 8px;
+  padding-left: 18px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.cleanup-list strong {
+  color: var(--text);
+}
+
+.backup-card .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
