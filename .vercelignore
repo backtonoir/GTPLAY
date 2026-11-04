@@ -1,0 +1,4 @@
+# Hanya untuk hosting VPS / Coolify — tidak dipakai Vercel.
+server.js
+Dockerfile
+.dockerignore
