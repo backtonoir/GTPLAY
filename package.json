@@ -1,0 +1,9 @@
+{
+  "name": "gtplay-store",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GTPLAY Store. Static site + api/ functions. server.js is only used on a VPS (Coolify); Vercel ignores it.",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
