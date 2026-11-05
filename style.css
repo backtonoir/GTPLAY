@@ -5285,9 +5285,9 @@ textarea.input {
   position: relative;
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
   background: color-mix(in srgb, var(--surface-2) 88%, transparent);
   box-shadow: inset 0 0 0 1px var(--border-strong), 0 8px 22px rgba(0, 0, 0, 0.45);
   color: var(--text);
@@ -5299,6 +5299,20 @@ textarea.input {
 .social-dock-btn svg {
   width: 22px;
   height: 22px;
+}
+
+.social-dock-btn img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.social-dock-btn.has-image {
+  background: transparent;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .social-dock-btn.is-discord { color: #8b95ff; }
@@ -5341,8 +5355,9 @@ textarea.input {
   }
 
   .social-dock-btn {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
   }
 
   .social-dock-btn svg {

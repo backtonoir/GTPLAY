@@ -171,8 +171,41 @@ GT.site = (function () {
     youtube: '<rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="m10 9 5 3-5 3z" fill="currentColor"/>'
   };
 
+  // Hanya tampil di halaman Home, Store, dan How To.
+  const FLOAT_PAGES = ["index", "store", "howto"];
+  // Ikon custom (opsional): upload ke images/social/discord.png,
+  // tiktok.png, youtube.png. Kalau file tidak ada → ikon bawaan.
+  const FLOAT_IMAGE_EXT = ["png"];
+
+  function floatPage() {
+    const p = window.location.pathname.toLowerCase().replace(/\/+$/, "").split("/").pop().replace(/\.html$/, "");
+    return p || "index";
+  }
+
+  function floatIcon(link, key) {
+    const svg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FLOAT_ICONS[key]}</svg>`;
+    let i = 0;
+    const img = document.createElement("img");
+    img.alt = "";
+    img.width = 46;
+    img.height = 46;
+    img.decoding = "async";
+    img.addEventListener("load", () => { link.classList.add("has-image"); });
+    img.addEventListener("error", () => {
+      i += 1;
+      if (i < FLOAT_IMAGE_EXT.length) {
+        img.src = `/images/social/${key}.${FLOAT_IMAGE_EXT[i]}`;
+      } else {
+        img.remove();
+        link.insertAdjacentHTML("afterbegin", svg); // Ikon statis bawaan.
+      }
+    });
+    img.src = `/images/social/${key}.${FLOAT_IMAGE_EXT[0]}`;
+    return img;
+  }
+
   function renderFloatingSocial() {
-    if (!document.body || document.body.classList.contains("admin-body") || document.body.classList.contains("maintenance-page")) return;
+    if (!document.body || !FLOAT_PAGES.includes(floatPage())) return;
     const links = socialLinks();
     const keys = FLOAT_KEYS.filter(key => links[key]);
     let dock = document.getElementById("socialDock");
@@ -189,6 +222,10 @@ GT.site = (function () {
       document.body.append(dock);
     }
 
+    const signature = keys.map(key => key + "=" + links[key]).join("|");
+    if (dock.dataset.sig === signature) return;
+    dock.dataset.sig = signature;
+
     dock.replaceChildren(...keys.map(key => {
       const link = document.createElement("a");
       link.className = `social-dock-btn is-${key}`;
@@ -196,8 +233,7 @@ GT.site = (function () {
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       link.setAttribute("aria-label", SOCIAL_LABELS[key]);
-      // Ikon statis dari FLOAT_ICONS (bukan input pengguna).
-      link.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FLOAT_ICONS[key]}</svg>`;
+      link.append(floatIcon(link, key));
       const label = document.createElement("span");
       label.className = "social-dock-label";
       label.textContent = SOCIAL_LABELS[key];
