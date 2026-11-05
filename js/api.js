@@ -76,6 +76,7 @@ GT.api = (function () {
     INVALID_COUPON: "Check the coupon: code 3–24 letters/numbers, percent 1–90, amounts above 0, and the end date after the start date.",
     COUPON_EXISTS: "A coupon with this code already exists.",
     COUPON_IN_USE: "This code was already used in orders, so it can't be renamed. Create a new coupon instead.",
+    INVALID_WEBHOOK: "Paste a Discord webhook URL (https://discord.com/api/webhooks/…).",
     INVALID_CLEANUP: "Choose an age between 7 and 3650 days.",
     CLEANUP_CONFIRM: "Type HAPUS to confirm the cleanup.",
     INVALID_SITE_SETTINGS: "Some settings are not valid: check the name, color, phone numbers, and that every link starts with https://.",
@@ -919,6 +920,10 @@ GT.api = (function () {
           return loadFeedback();
         },
 
+        async getDiscordSettings() {
+          throw new ApiError("DEMO", "Discord notifications need the Supabase backend.");
+        },
+
         async exportBackup() {
           const orders = Object.values(loadOrders()).map(o => {
             const copy = { ...o };
@@ -1659,6 +1664,27 @@ GT.api = (function () {
 
         async exportBackup() {
           return rpc("admin_export_backup");
+        },
+
+        async getDiscordSettings() {
+          return rpc("admin_get_discord_settings");
+        },
+
+        async setDiscordSettings({ webhook, events, siteUrl, clear }) {
+          const hook = String(webhook || "").trim();
+          if (hook && !/^https:\/\/(discord\.com|discordapp\.com|ptb\.discord\.com|canary\.discord\.com)\/api\/webhooks\/\d+\/[\w-]+$/.test(hook)) fail("INVALID_WEBHOOK");
+          return rpc("admin_set_discord_settings", { p_webhook: hook || null, p_events: events || {}, p_site_url: siteUrl || null, p_clear: Boolean(clear) });
+        },
+
+        // Kirim pesan tes lalu tunggu hasil dari Discord (maks ±8 detik).
+        async testDiscord() {
+          const requestId = await rpc("admin_test_discord");
+          for (let i = 0; i < 8; i += 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const result = await rpc("admin_discord_result", { p_request: requestId });
+            if (result && result.done) return result;
+          }
+          return { done: false };
         },
 
         async cleanupPreview(days) {

@@ -1685,7 +1685,118 @@
       storeStatus = null;
     }
 
-    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection, siteSettingsForm(storeStatus), backupCard()].filter(Boolean)));
+    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection, siteSettingsForm(storeStatus), discordCard(), backupCard()].filter(Boolean)));
+  }
+
+  // ------------------------------------------------
+  // NOTIFIKASI DISCORD (migration_v11_discord_notify.sql)
+  // --------------------------------------------------
+  // URL webhook hanya dikirim ke database (tidak pernah
+  // ditampilkan lagi utuh). Pesan dikirim oleh database.
+  // ------------------------------------------------
+
+  function discordCard() {
+    const card = h("section", { class: "card discord-card" },
+      h("h2", { class: "card-title" }, "Discord Notifications"),
+      h("p", { class: "help" }, "Loading…"));
+
+    (async () => {
+      let settings;
+      try {
+        settings = await admin.getDiscordSettings();
+      } catch (err) {
+        card.replaceChildren(
+          h("h2", { class: "card-title" }, "Discord Notifications"),
+          h("div", { class: "notice notice-warn" }, h("p", {},
+            err.code === "DEMO" ? err.message
+              : "Run supabase/migration_v11_discord_notify.sql in the Supabase SQL Editor to enable Discord notifications."))
+        );
+        return;
+      }
+
+      const events = settings.events || {};
+      const webhook = h("input", {
+        class: "input mono", id: "discordWebhook", type: "url", autocomplete: "off", spellcheck: "false",
+        placeholder: settings.configured ? "Webhook saved — paste a new one to replace it" : "https://discord.com/api/webhooks/…"
+      });
+      const check = (key, label) => {
+        const box = h("input", { type: "checkbox", id: `discordEv-${key}` });
+        box.checked = events[key] !== false;
+        return [box, h("label", { class: "check-row" }, box, ` ${label}`)];
+      };
+      const [evOrder, evOrderRow] = check("order", "New order");
+      const [evPayment, evPaymentRow] = check("payment", "Payment proof submitted (needs verification)");
+      const [evFeedback, evFeedbackRow] = check("feedback", "New suggestion / bug report");
+      const status = h("p", { class: "help discord-status" }, settings.configured
+        ? `Connected: ${settings.preview}`
+        : "Not connected yet.");
+      const error = h("p", { class: "error-text", role: "alert" });
+      const saveBtn = h("button", { type: "submit", class: "btn btn-primary" }, "Save");
+      const testBtn = h("button", { type: "button", class: "btn btn-outline", disabled: !settings.configured }, "Send test message");
+      const removeBtn = settings.configured ? h("button", { type: "button", class: "btn btn-ghost" }, "Disconnect") : null;
+
+      async function save(clear) {
+        error.textContent = "";
+        saveBtn.disabled = true;
+        try {
+          await admin.setDiscordSettings({
+            webhook: clear ? "" : webhook.value,
+            events: { order: evOrder.checked, payment: evPayment.checked, feedback: evFeedback.checked },
+            siteUrl: window.location.origin,
+            clear
+          });
+          toast(clear ? "Discord disconnected." : "Discord notification settings saved.", "success");
+          card.replaceWith(discordCard());
+        } catch (err) {
+          error.textContent = err.message;
+          saveBtn.disabled = false;
+        }
+      }
+
+      testBtn.addEventListener("click", async () => {
+        testBtn.disabled = true;
+        testBtn.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), " Sending…");
+        try {
+          const result = await admin.testDiscord();
+          if (result.done && result.status >= 200 && result.status < 300) toast("Test message delivered — check your Discord channel.", "success");
+          else if (result.done) toast(`Discord answered with status ${result.status || "?"}${result.error ? ` (${result.error})` : ""}. Check the webhook URL.`, "error");
+          else toast("Sent, but Discord hasn't answered yet. Check the channel in a moment.", "info");
+        } catch (err) {
+          toast(err.message, "error");
+        } finally {
+          testBtn.disabled = false;
+          testBtn.textContent = "Send test message";
+        }
+      });
+      if (removeBtn) {
+        removeBtn.addEventListener("click", async () => {
+          const ok = await confirmDialog({ title: "Disconnect Discord?", message: "Notifications stop until you paste a webhook again.", confirmLabel: "Disconnect", danger: true });
+          if (ok) save(true);
+        });
+      }
+
+      card.replaceChildren(h("form", {
+        novalidate: true,
+        onsubmit: event => { event.preventDefault(); save(false); }
+      },
+        h("h2", { class: "card-title" }, "Discord Notifications"),
+        h("p", { class: "help downloads-help" }, "Get a message in your Discord channel for every new order, payment proof, and feedback — no need to keep the admin panel open."),
+        h("div", { class: "field" },
+          h("label", { class: "label", for: "discordWebhook" }, "Webhook URL"),
+          webhook,
+          status,
+          h("p", { class: "help" }, "Discord → Server Settings → Integrations → Webhooks → New Webhook → choose the admin channel → Copy Webhook URL. Keep it private: anyone with it can post to that channel.")
+        ),
+        h("fieldset", { class: "admin-fieldset" },
+          h("legend", {}, "Send a message for"),
+          evOrderRow, evPaymentRow, evFeedbackRow
+        ),
+        error,
+        h("div", { class: "row-actions start" }, saveBtn, testBtn, removeBtn)
+      ));
+    })();
+
+    return card;
   }
 
   // ------------------------------------------------
