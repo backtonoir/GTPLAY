@@ -672,5 +672,6 @@ GT.i18nPairs = [
   ["You've already used this coupon the maximum number of times.", "Kamu sudah memakai kupon ini sebanyak batas maksimal."],
   ["Coupons can only be changed before you submit payment.", "Kupon hanya bisa diubah sebelum kamu mengirim bukti pembayaran."],
   ["Too many wrong coupon codes for this order.", "Terlalu banyak kode kupon salah untuk pesanan ini."],
-  ["Apply", "Pakai"]
+  ["Apply", "Pakai"],
+  ["Optimizing image…", "Mengoptimalkan gambar…"]
 ];

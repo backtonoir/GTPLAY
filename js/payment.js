@@ -365,19 +365,35 @@
       if (event.dataTransfer.files[0]) setFile(event.dataTransfer.files[0]);
     });
 
-    function setFile(file) {
+    // Foto HP besar (sampai 25 MB) dikompres dulu di browser,
+    // jadi hemat kuota storage dan upload lebih cepat.
+    const MAX_ORIGINAL_MB = 25;
+
+    async function setFile(original) {
       errorEl.textContent = "";
       if (proofPreviewUrl) URL.revokeObjectURL(proofPreviewUrl);
       proofPreviewUrl = null;
       proofFile = null;
 
-      if (!file) return;
+      if (!original) return;
 
-      if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      if (!["image/png", "image/jpeg", "image/webp"].includes(original.type)) {
         errorEl.textContent = GT.t("Please choose a PNG, JPG, or WEBP image.");
         input.value = "";
         return;
       }
+      if (original.size > MAX_ORIGINAL_MB * 1024 * 1024) {
+        errorEl.textContent = GT.t("File is larger than {mb} MB.", { mb: MAX_ORIGINAL_MB });
+        input.value = "";
+        return;
+      }
+
+      paidBtn.disabled = true;
+      nameEl.textContent = original.name;
+      hintEl.textContent = GT.t("Optimizing image…");
+      const file = await GT.utils.compressImage(original);
+      paidBtn.disabled = false;
+
       if (file.size > GT.config.MAX_PROOF_MB * 1024 * 1024) {
         errorEl.textContent = GT.t("File is larger than {mb} MB.", { mb: GT.config.MAX_PROOF_MB });
         input.value = "";

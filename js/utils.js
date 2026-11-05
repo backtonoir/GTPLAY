@@ -538,6 +538,62 @@ GT.utils = (function () {
     return lines.length > 1 || (lines[0] || "").length > 110;
   }
 
+  // ------------------------------------------------
+  // KOMPRES GAMBAR (bukti bayar) sebelum upload
+  // --------------------------------------------------
+  // Sisi terpanjang maks 1600 px, disimpan sebagai WEBP
+  // (atau JPEG bila browser tidak mendukung). Screenshot
+  // 1 MB biasanya jadi ±100–200 KB dan tetap jelas dibaca.
+  // Bila gagal atau hasilnya lebih besar, file asli dipakai.
+  // ------------------------------------------------
+
+  async function compressImage(file, options) {
+    const { maxSide = 1600, quality = 0.82, skipBelow = 350 * 1024 } = options || {};
+    if (!file || !/^image\/(png|jpeg|webp)$/.test(file.type)) return file;
+
+    let bitmap = null;
+    let source = null;
+    try {
+      if ("createImageBitmap" in window) {
+        bitmap = await createImageBitmap(file);
+        source = bitmap;
+      } else {
+        source = await new Promise((resolve, reject) => {
+          const img = new Image();
+          const url = URL.createObjectURL(file);
+          img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+          img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("decode")); };
+          img.src = url;
+        });
+      }
+      const width = source.width;
+      const height = source.height;
+      const scale = Math.min(1, maxSide / Math.max(width, height));
+      if (scale === 1 && file.size <= skipBelow) return file;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+
+      const toBlob = type => new Promise(resolve => canvas.toBlob(resolve, type, quality));
+      let blob = await toBlob("image/webp");
+      if (!blob || blob.type !== "image/webp") blob = await toBlob("image/jpeg");
+      if (!blob || blob.size >= file.size) return file;
+
+      const ext = blob.type === "image/webp" ? "webp" : "jpg";
+      const name = String(file.name || "proof").replace(/\.[^.]+$/, "") + "." + ext;
+      return new File([blob], name, { type: blob.type, lastModified: Date.now() });
+    } catch (error) {
+      return file;
+    } finally {
+      if (bitmap && bitmap.close) bitmap.close();
+    }
+  }
+
   // Salin teks ke clipboard (dengan fallback untuk browser lama).
   async function copyText(value) {
     try {
@@ -615,6 +671,7 @@ GT.utils = (function () {
     whatsappURL,
     storeName,
     orderTotalRows,
+    compressImage,
     paymentMethods,
     paymentMethodLabel,
     lockScroll,
