@@ -1345,6 +1345,25 @@
                   : h("span", { class: "status-badge tone-muted" }, "Draft")),
                 h("td", {}, h("div", { class: "row-actions" },
                   h("button", { type: "button", class: "btn btn-outline btn-sm", onclick: () => openAnnouncementForm(item) }, "Edit"),
+                  item.published && !GT.api.isDemo ? h("button", {
+                    type: "button",
+                    class: "btn btn-ghost btn-sm",
+                    title: "Send this announcement to the Discord announcement channel again",
+                    onclick: async event => {
+                      const btn = event.currentTarget;
+                      const ok = await confirmDialog({ title: "Send to Discord?", message: `"${item.title}" will be posted to your Discord announcement channel.`, confirmLabel: "Send" });
+                      if (!ok) return;
+                      btn.disabled = true;
+                      try {
+                        const result = await admin.sendAnnouncementDiscord(item.id);
+                        discordResultToast(result);
+                      } catch (error) {
+                        toast(error.code === "INVALID_WEBHOOK" ? GT.t("Set up the Discord announcement channel first (Admin → Server).") : error.message, "error");
+                      } finally {
+                        btn.disabled = false;
+                      }
+                    }
+                  }, "Discord") : null,
                   h("button", {
                     type: "button",
                     class: "btn btn-danger btn-sm",
@@ -1756,7 +1775,7 @@
       storeStatus = null;
     }
 
-    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection, siteSettingsForm(storeStatus), discordCard(), backupCard()].filter(Boolean)));
+    panel.replaceChildren(h("div", { class: "stack" }, ...[intro, liveSection, siteSettingsForm(storeStatus), discordCard(), announceCard(), backupCard()].filter(Boolean)));
   }
 
   // ------------------------------------------------
@@ -1862,6 +1881,103 @@
           h("legend", {}, "Send a message for"),
           evOrderRow, evPaymentRow, evFeedbackRow
         ),
+        error,
+        h("div", { class: "row-actions start" }, saveBtn, testBtn, removeBtn)
+      ));
+    })();
+
+    return card;
+  }
+
+  function discordResultToast(result) {
+    if (result && result.done && result.status >= 200 && result.status < 300) toast("Delivered — check your Discord channel.", "success");
+    else if (result && result.done) toast(`Discord answered with status ${result.status || "?"}${result.error ? ` (${result.error})` : ""}. Check the webhook URL.`, "error");
+    else toast("Sent, but Discord hasn't answered yet. Check the channel in a moment.", "info");
+  }
+
+  // ------------------------------------------------
+  // PENGUMUMAN KE DISCORD (migration_v14_discord_announcements.sql)
+  // ------------------------------------------------
+  // Webhook terpisah untuk channel publik (#pengumuman),
+  // supaya data pesanan tidak pernah tampil ke pemain.
+
+  function announceCard() {
+    const title = "Discord Announcements";
+    const card = h("section", { class: "card discord-card" },
+      h("h2", { class: "card-title" }, title),
+      h("p", { class: "help" }, "Loading…"));
+
+    (async () => {
+      let settings;
+      try {
+        settings = await admin.getDiscordAnnounce();
+      } catch (err) {
+        card.replaceChildren(
+          h("h2", { class: "card-title" }, title),
+          h("div", { class: "notice notice-warn" }, h("p", {},
+            err.code === "DEMO" ? err.message
+              : "Run supabase/migration_v14_discord_announcements.sql in the Supabase SQL Editor to post announcements to Discord automatically."))
+        );
+        return;
+      }
+
+      const webhook = h("input", {
+        class: "input mono", id: "announceWebhook", type: "url", autocomplete: "off", spellcheck: "false",
+        placeholder: settings.configured ? "Webhook saved — paste a new one to replace it" : "https://discord.com/api/webhooks/…"
+      });
+      const ping = h("input", { type: "checkbox", id: "announcePing" });
+      ping.checked = Boolean(settings.ping);
+      const status = h("p", { class: "help discord-status" }, settings.configured ? `Connected: ${settings.preview}` : "Not connected yet.");
+      const error = h("p", { class: "error-text", role: "alert" });
+      const saveBtn = h("button", { type: "submit", class: "btn btn-primary" }, "Save");
+      const testBtn = h("button", { type: "button", class: "btn btn-outline", disabled: !settings.configured }, "Send test message");
+      const removeBtn = settings.configured ? h("button", { type: "button", class: "btn btn-ghost" }, "Disconnect") : null;
+
+      async function save(clear) {
+        error.textContent = "";
+        saveBtn.disabled = true;
+        try {
+          await admin.setDiscordAnnounce({ webhook: clear ? "" : webhook.value, ping: ping.checked, siteUrl: window.location.origin, clear });
+          toast(clear ? "Announcement channel disconnected." : "Announcement channel saved.", "success");
+          card.replaceWith(announceCard());
+        } catch (err) {
+          error.textContent = err.message;
+          saveBtn.disabled = false;
+        }
+      }
+
+      testBtn.addEventListener("click", async () => {
+        testBtn.disabled = true;
+        testBtn.replaceChildren(h("span", { class: "spinner", "aria-hidden": "true" }), " Sending…");
+        try {
+          discordResultToast(await admin.sendAnnouncementDiscord(null));
+        } catch (err) {
+          toast(err.message, "error");
+        } finally {
+          testBtn.disabled = false;
+          testBtn.textContent = GT.t("Send test message");
+        }
+      });
+      if (removeBtn) {
+        removeBtn.addEventListener("click", async () => {
+          const ok = await confirmDialog({ title: "Disconnect announcement channel?", message: "New announcements will no longer be posted to Discord.", confirmLabel: "Disconnect", danger: true });
+          if (ok) save(true);
+        });
+      }
+
+      card.replaceChildren(h("form", {
+        novalidate: true,
+        onsubmit: event => { event.preventDefault(); save(false); }
+      },
+        h("h2", { class: "card-title" }, title),
+        h("p", { class: "help downloads-help" }, "Every announcement you publish (Admin → Announcements) is posted to this Discord channel automatically. Colored lines (+ - !) keep their colors in Discord."),
+        h("div", { class: "field" },
+          h("label", { class: "label", for: "announceWebhook" }, "Webhook URL (public channel)"),
+          webhook,
+          status,
+          h("p", { class: "help" }, "Use a webhook from your public announcement channel (e.g. #announcements) — NOT the admin channel used for orders.")
+        ),
+        h("label", { class: "check-row" }, ping, " Mention @everyone with each announcement"),
         error,
         h("div", { class: "row-actions start" }, saveBtn, testBtn, removeBtn)
       ));

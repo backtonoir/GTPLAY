@@ -5369,3 +5369,7 @@ textarea.input {
     display: none;
   }
 }
+
+.discord-card form > .check-row {
+  margin-bottom: 14px;
+}

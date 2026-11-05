@@ -44,6 +44,7 @@ GT.api = (function () {
     OUT_OF_STOCK: "Not enough stock for one of the items.",
     TOO_MANY_PENDING: "This GrowID already has several unpaid orders. Finish or cancel them first.",
     ORDER_NOT_FOUND: "Order not found. Check the Order ID and access code.",
+    NOT_FOUND: "Not found — it may have been deleted.",
     ORDER_EXPIRED: "This payment session has expired.",
     INVALID_STATUS: "This order can no longer be changed from here.",
     PROOF_REQUIRED: "Please attach your payment proof.",
@@ -952,6 +953,10 @@ GT.api = (function () {
           throw new ApiError("DEMO", "Discord notifications need the Supabase backend.");
         },
 
+        async getDiscordAnnounce() {
+          throw new ApiError("DEMO", "Discord notifications need the Supabase backend.");
+        },
+
         async exportBackup() {
           const orders = Object.values(loadOrders()).map(o => {
             const copy = { ...o };
@@ -1307,6 +1312,17 @@ GT.api = (function () {
       } catch (error) {
         throw mapError(error);
       }
+    }
+
+    // Tunggu jawaban Discord untuk request pg_net (maks ±8 detik).
+    async function waitDiscord(requestId) {
+      if (!requestId) return { done: false };
+      for (let i = 0; i < 8; i += 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const result = await rpc("admin_discord_result", { p_request: requestId });
+        if (result && result.done) return result;
+      }
+      return { done: false };
     }
 
     function mapProduct(row) {
@@ -1800,13 +1816,23 @@ GT.api = (function () {
 
         // Kirim pesan tes lalu tunggu hasil dari Discord (maks ±8 detik).
         async testDiscord() {
-          const requestId = await rpc("admin_test_discord");
-          for (let i = 0; i < 8; i += 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const result = await rpc("admin_discord_result", { p_request: requestId });
-            if (result && result.done) return result;
-          }
-          return { done: false };
+          return waitDiscord(await rpc("admin_test_discord"));
+        },
+
+        // ---- Pengumuman ke Discord (migration_v14) ----
+        async getDiscordAnnounce() {
+          return rpc("admin_get_discord_announce");
+        },
+
+        async setDiscordAnnounce({ webhook, ping, siteUrl, clear }) {
+          const hook = String(webhook || "").trim();
+          if (hook && !/^https:\/\/(discord\.com|discordapp\.com|ptb\.discord\.com|canary\.discord\.com)\/api\/webhooks\/\d+\/[\w-]+$/.test(hook)) fail("INVALID_WEBHOOK");
+          return rpc("admin_set_discord_announce", { p_webhook: hook || null, p_ping: Boolean(ping), p_site_url: siteUrl || null, p_clear: Boolean(clear) });
+        },
+
+        // id kosong = pesan tes.
+        async sendAnnouncementDiscord(id) {
+          return waitDiscord(await rpc("admin_send_announcement_discord", { p_id: id || null }));
         },
 
         async cleanupPreview(days) {
