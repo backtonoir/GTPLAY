@@ -51,6 +51,8 @@ GT.api = (function () {
     PROOF_TOO_LARGE: "Payment proof must be smaller than {mb} MB.",
     NOT_ADMIN: "This account is not an admin.",
     NOT_SIGNED_IN: "Please sign in.",
+    ORDER_LINKED: "This order is already linked to another account.",
+    ACCOUNTS_DISABLED: "Login is not available yet.",
     INVALID_TRANSITION: "That status change is not allowed.",
     INVALID_PRODUCT: "Product data is not valid.",
     MAINTENANCE: "The store is under maintenance. New orders are paused for now.",
@@ -835,8 +837,21 @@ GT.api = (function () {
         return publicOrder(order);
       },
 
+      // Login pembeli butuh Supabase Auth → tidak tersedia di demo.
+      async linkOrder() { fail("ACCOUNTS_DISABLED"); },
+      async listMyOrders() { fail("ACCOUNTS_DISABLED"); },
+      auth: {
+        available: false,
+        hasStoredSession() { return false; },
+        async getUser() { return null; },
+        async signInWithDiscord() { fail("ACCOUNTS_DISABLED"); },
+        async signOut() {},
+        async onChange() {}
+      },
+
       admin: {
         requiresAuth: false,
+        async isAdmin() { return false; },
 
         async getSession() {
           return { email: "demo@local", demo: true };
@@ -1502,8 +1517,97 @@ GT.api = (function () {
         return mapOrder(await rpc("cancel_order", { p_order_id: orderId, p_access_code: accessCode }));
       },
 
+      // ---- Akun pembeli (login Discord, migration_v13) ----
+      async linkOrder(orderId, accessCode) {
+        try {
+          return await rpc("link_order", { p_order_id: orderId, p_access_code: accessCode });
+        } catch (error) {
+          if (error.code === "CONFIG") fail("ACCOUNTS_DISABLED");
+          throw error;
+        }
+      },
+
+      async listMyOrders() {
+        try {
+          return await rpc("my_orders", { p_limit: 50 });
+        } catch (error) {
+          if (error.code === "CONFIG") fail("ACCOUNTS_DISABLED");
+          throw error;
+        }
+      },
+
+      auth: {
+        available: true,
+
+        // Ada token login tersimpan? (cek cepat tanpa memuat supabase-js)
+        hasStoredSession() {
+          try {
+            for (let i = 0; i < window.localStorage.length; i++) {
+              const key = window.localStorage.key(i) || "";
+              if (/^sb-.+-auth-token$/.test(key)) return true;
+            }
+          } catch (error) {
+            return false;
+          }
+          return false;
+        },
+
+        async getUser() {
+          const sb = await client();
+          const { data } = await sb.auth.getSession();
+          const user = data && data.session && data.session.user;
+          if (!user) return null;
+          const meta = user.user_metadata || {};
+          const claims = meta.custom_claims || {};
+          const avatar = String(meta.avatar_url || meta.picture || "");
+          return {
+            id: user.id,
+            name: String(claims.global_name || meta.full_name || meta.name || meta.user_name || user.email || "User").slice(0, 60),
+            handle: String(meta.name || meta.user_name || "").slice(0, 60),
+            avatar: /^https:\/\/cdn\.discordapp\.com\//.test(avatar) ? avatar : "",
+            provider: (user.app_metadata && user.app_metadata.provider) || "",
+            email: user.email || ""
+          };
+        },
+
+        async signInWithDiscord(returnTo) {
+          try {
+            const sb = await client();
+            const redirectTo = window.location.origin + "/account" + (returnTo ? "?next=" + encodeURIComponent(returnTo) : "");
+            const { error } = await sb.auth.signInWithOAuth({
+              provider: "discord",
+              options: { redirectTo, scopes: "identify" }
+            });
+            if (error) throw error;
+          } catch (error) {
+            const text = String((error && error.message) || "");
+            if (/provider is not enabled|unsupported provider/i.test(text)) fail("ACCOUNTS_DISABLED");
+            throw mapError(error);
+          }
+        },
+
+        async signOut() {
+          const sb = await client();
+          await sb.auth.signOut();
+        },
+
+        async onChange(callback) {
+          const sb = await client();
+          sb.auth.onAuthStateChange(() => callback());
+        }
+      },
+
       admin: {
         requiresAuth: true,
+
+        // Cek admin tanpa logout (dipakai halaman publik, mis.
+        // maintenance) supaya akun pembeli tidak ikut ter-logout.
+        async isAdmin() {
+          const sb = await client();
+          const { data } = await sb.auth.getSession();
+          if (!data.session) return false;
+          return Boolean(await rpc("is_admin"));
+        },
 
         // Supabase client langsung — hanya untuk fitur internal
         // seperti Realtime subscription di admin dashboard.

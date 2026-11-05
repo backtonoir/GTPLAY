@@ -75,7 +75,7 @@
 
     try {
       const order = await GT.api.getOrder(orderId, code);
-      GT.api.myOrders.add({ id: order.id, code, createdAt: order.createdAt });
+      if (code) GT.api.myOrders.add({ id: order.id, code, createdAt: order.createdAt });
       renderOrder(order, code);
       renderDeviceOrders();
       resultEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -145,6 +145,9 @@
     if (code) {
       codeInput.value = code;
       track(presetId, code);
+    } else if (GT.api.auth && GT.api.auth.available && GT.api.auth.hasStoredSession()) {
+      // Login Discord → pesanan milik akun bisa dibuka tanpa kode.
+      track(presetId, "");
     } else {
       codeInput.focus();
     }

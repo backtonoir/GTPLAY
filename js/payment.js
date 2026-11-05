@@ -33,6 +33,10 @@
   if (orderId && !accessCode) accessCode = (GT.api.myOrders.codeFor(orderId) || "").toUpperCase();
   if (orderId && accessCode) GT.api.myOrders.add({ id: orderId, code: accessCode });
 
+  // Pembeli yang login (Discord) bisa membuka pesanan miliknya
+  // tanpa kode akses — server mengecek pemilik akun.
+  const signedInAccess = Boolean(orderId && !accessCode && GT.api.auth && GT.api.auth.available && GT.api.auth.hasStoredSession());
+
   // ------------------------------------------------
   // SMALL PARTS
   // ------------------------------------------------
@@ -53,7 +57,7 @@
         statusBadge(order.status)
       ),
       infoRow("GrowID", h("strong", {}, order.growId)),
-      infoRow("Access code", h("span", { class: "copy-row" }, h("strong", { class: "access-code" }, accessCode), copyButton(accessCode, "Access code"))),
+      accessCode ? infoRow("Access code", h("span", { class: "copy-row" }, h("strong", { class: "access-code" }, accessCode), copyButton(accessCode, "Access code"))) : null,
       infoRow("Created", formatDateTime(order.createdAt)),
       order.paymentMethod ? infoRow("Payment method", GT.utils.paymentMethodLabel(order.paymentMethod)) : null,
       h("table", { class: "line-table order-lines" },
@@ -593,12 +597,18 @@
 
   GT.layout.init().catch(() => {});
 
-  if (!orderId || !accessCode) {
+  if (!orderId || (!accessCode && !signedInAccess)) {
+    const canLogin = Boolean(orderId && GT.api.auth && GT.api.auth.available);
     root.replaceChildren(
       h("div", { class: "state-block" },
         h("p", { class: "state-title" }, "Payment link is incomplete"),
         h("p", { class: "state-text" }, "Open your order from the Track Order page using your Order ID and access code."),
-        h("a", { class: "btn btn-primary", href: "/track" }, "Track order")
+        h("div", { class: "modal-actions" },
+          h("a", { class: "btn btn-primary", href: "/track" }, "Track order"),
+          canLogin
+            ? h("a", { class: "btn btn-outline", href: "/account?next=" + encodeURIComponent("/payment?order=" + orderId) }, "Login with Discord")
+            : null
+        )
       )
     );
     return;

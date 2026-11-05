@@ -362,7 +362,7 @@ GT.layout = (function () {
   // Pesanan baru juga ditolak oleh server (GT:MAINTENANCE).
   // ------------------------------------------------
 
-  const MAINTENANCE_EXEMPT = ["payment", "track"];
+  const MAINTENANCE_EXEMPT = ["payment", "track", "account"];
 
   function maintenanceBanner(text) {
     if (document.getElementById("maintenanceBanner")) return;
@@ -383,7 +383,7 @@ GT.layout = (function () {
     let isAdmin = false;
     if (GT.api.admin && GT.api.admin.requiresAuth) {
       try {
-        isAdmin = Boolean(await GT.api.admin.getSession());
+        isAdmin = Boolean(await GT.api.admin.isAdmin());
       } catch (error) {
         isAdmin = false;
       }
@@ -402,8 +402,61 @@ GT.layout = (function () {
     window.location.replace("/maintenance");
   }
 
+  // ------------------------------------------------
+  // AKUN PEMBELI (tombol Login / avatar di header)
+  // ------------------------------------------------
+
+  const USER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
+
+  function userIcon() {
+    const span = h("span", { class: "account-icon" });
+    span.innerHTML = USER_ICON; // SVG statis, bukan input pengguna.
+    return span;
+  }
+
+  function paintAccountButton(btn, user) {
+    if (user) {
+      const avatar = user.avatar
+        ? h("img", { class: "account-avatar", src: user.avatar, alt: "", width: 24, height: 24, referrerpolicy: "no-referrer" })
+        : userIcon();
+      const label = h("span", { class: "account-label" });
+      label.textContent = user.name; // Nama Discord: jangan diterjemahkan.
+      btn.replaceChildren(avatar, label);
+      btn.setAttribute("aria-label", GT.t("My account"));
+      btn.classList.add("is-signed-in");
+    } else {
+      btn.replaceChildren(userIcon(), h("span", { class: "account-label" }, "Login"));
+      btn.setAttribute("aria-label", GT.t("Login with Discord"));
+      btn.classList.remove("is-signed-in");
+    }
+  }
+
+  async function initAccountButton() {
+    const auth = GT.api.auth;
+    const actions = $(".header-actions");
+    if (!auth || !auth.available || !actions || actions.querySelector(".account-trigger")) return;
+
+    const btn = h("a", { class: "account-trigger", href: "/account" });
+    paintAccountButton(btn, null);
+    const cart = actions.querySelector(".cart-trigger");
+    actions.insertBefore(btn, cart || actions.querySelector(".nav-toggle"));
+    if (pageSlug() === "account") btn.setAttribute("aria-current", "page");
+
+    // Belum pernah login di perangkat ini → tidak perlu memuat supabase-js.
+    if (!auth.hasStoredSession()) return;
+    try {
+      paintAccountButton(btn, await auth.getUser());
+      auth.onChange(async () => {
+        try { paintAccountButton(btn, await auth.getUser()); } catch (error) { /* abaikan */ }
+      });
+    } catch (error) {
+      /* Gagal cek sesi → tetap tampil tombol Login. */
+    }
+  }
+
   function init(options) {
     maintenanceGuard();
+    initAccountButton();
     initNav();
     renderSocial();
     const year = $("#year");

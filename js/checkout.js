@@ -194,6 +194,14 @@
       GT.api.myOrders.add({ id: result.orderId, code: result.accessCode });
       GT.cart.clear();
 
+      // Sedang login (Discord) → tautkan pesanan ke akun.
+      if (GT.api.auth && GT.api.auth.available && GT.api.auth.hasStoredSession()) {
+        await Promise.race([
+          GT.api.linkOrder(result.orderId, result.accessCode).catch(() => {}),
+          new Promise(resolve => setTimeout(resolve, 4000))
+        ]);
+      }
+
       window.location.href = `/payment?order=${encodeURIComponent(result.orderId)}#k=${encodeURIComponent(result.accessCode)}`;
     } catch (error) {
       submitting = false;
