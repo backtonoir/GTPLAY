@@ -580,6 +580,17 @@
     renderTable();
   }
 
+  // Isi bundle untuk sebuah baris pesanan (dari data produk saat ini).
+  function bundleLines(productId) {
+    const product = state.products.find(p => p.id === productId);
+    const items = (product && product.bundleItems) || [];
+    if (!items.length) return null;
+    return h("ul", { class: "order-bundle-lines" }, items.map(item => {
+      const component = state.products.find(p => p.id === item.productId);
+      return h("li", {}, `${component ? component.name : item.productId} ×${item.qty}`);
+    }));
+  }
+
   async function openOrder(orderId) {
     let order;
     try {
@@ -604,7 +615,7 @@
       h("table", { class: "line-table" },
         h("thead", {}, h("tr", {}, h("th", {}, "Item"), h("th", {}, "Unit"), h("th", {}, "Qty"), h("th", {}, "Subtotal"))),
         h("tbody", {}, order.items.map(item => h("tr", {},
-          h("td", {}, item.name),
+          h("td", {}, item.name, bundleLines(item.productId)),
           h("td", {},
             item.listPrice && item.listPrice > item.unitPrice ? h("s", { class: "price-old block" }, formatRupiah(item.listPrice)) : null,
             formatRupiah(item.unitPrice)),
@@ -1104,6 +1115,63 @@
 
     const submit = h("button", { type: "submit", class: "btn btn-primary" }, product ? "Save changes" : "Add product");
 
+    // ---- Isi bundle (migration_v12_bundles.sql)
+    const bundleSupported = product ? product.bundleSupported : state.products.some(item => item.bundleSupported);
+    const bundleChoices = state.products.filter(item => (!product || item.id !== product.id) && !(item.bundleItems || []).length);
+    let bundleRows = (p.bundleItems || []).map(item => ({ ...item }));
+    const bundleList = h("div", { class: "bundle-editor" });
+    const bundleWorth = h("p", { class: "help" });
+
+    function paintBundle() {
+      bundleList.replaceChildren(...bundleRows.map((row, index) => {
+        const select = h("select", { class: "input", "aria-label": "Bundle item" },
+          bundleChoices.map(item => h("option", { value: item.id }, `${item.name} — ${formatRupiah(item.price)}`)));
+        select.value = row.productId;
+        select.addEventListener("change", () => { row.productId = select.value; paintWorth(); });
+        const qty = h("input", { class: "input", type: "number", min: "1", max: "99", step: "1", value: row.qty, "aria-label": "Quantity" });
+        qty.addEventListener("input", () => { row.qty = Math.max(1, Math.min(99, Number(qty.value) || 1)); paintWorth(); });
+        return h("div", { class: "bundle-row" }, select, qty,
+          h("button", { type: "button", class: "btn btn-ghost btn-sm", "aria-label": "Remove item", onclick: () => { bundleRows.splice(index, 1); paintBundle(); } }, "✕"));
+      }));
+      paintWorth();
+    }
+
+    function paintWorth() {
+      if (!bundleRows.length) {
+        bundleWorth.textContent = "Leave empty for a normal product. Add items to sell this product as a bundle.";
+        return;
+      }
+      const worth = bundleRows.reduce((sum, row) => {
+        const item = state.products.find(x => x.id === row.productId);
+        return sum + (item ? item.price * row.qty : 0);
+      }, 0);
+      const bundlePrice = Number(price.value) || 0;
+      bundleWorth.textContent = `Items bought separately: ${formatRupiah(worth)}` +
+        (bundlePrice ? ` · bundle price ${formatRupiah(bundlePrice)} · buyers save ${formatRupiah(Math.max(0, worth - bundlePrice))}` : "");
+    }
+
+    const addBundleItem = h("button", {
+      type: "button", class: "btn btn-outline btn-sm",
+      onclick: () => {
+        if (!bundleChoices.length) return;
+        if (bundleRows.length >= 10) { toast("A bundle can contain up to 10 different items.", "error"); return; }
+        bundleRows.push({ productId: bundleChoices[0].id, qty: 1 });
+        paintBundle();
+      }
+    }, "+ Add item");
+
+    const bundleBox = h("div", { class: "span-2 discount-box" },
+      h("p", { class: "label" }, "Bundle contents"),
+      bundleSupported
+        ? [bundleList, h("div", { class: "row-actions start" }, addBundleItem), bundleWorth,
+           h("p", { class: "help" }, "Stock is set on this bundle product itself. The admin order view lists the contents so you know what to deliver.")]
+        : h("p", { class: "help" }, "Run supabase/migration_v12_bundles.sql in the Supabase SQL Editor to create bundles.")
+    );
+    if (bundleSupported) {
+      paintBundle();
+      price.addEventListener("input", paintWorth);
+    }
+
     const form = h("form", {
       novalidate: true,
       onsubmit: async event => {
@@ -1122,7 +1190,9 @@
           sortOrder: Number(sortOrder.value),
           active: active.checked,
           discountPercent: Number(discount.value || 0),
-          discountEndsAt: discountEnds.value ? new Date(discountEnds.value).toISOString() : null
+          discountEndsAt: discountEnds.value ? new Date(discountEnds.value).toISOString() : null,
+          bundleItems: bundleSupported ? bundleRows : undefined,
+          bundleSupported
         };
 
         if (!data.name.trim() || !data.category.trim()) {
@@ -1170,6 +1240,7 @@
           ),
           salePreview
         ),
+        bundleBox,
         h("div", { class: "field span-2" },
           h("label", { class: "label", for: "pImage" }, "Image"),
           h("div", { class: "input-row" },

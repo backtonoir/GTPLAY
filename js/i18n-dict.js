@@ -673,5 +673,8 @@ GT.i18nPairs = [
   ["Coupons can only be changed before you submit payment.", "Kupon hanya bisa diubah sebelum kamu mengirim bukti pembayaran."],
   ["Too many wrong coupon codes for this order.", "Terlalu banyak kode kupon salah untuk pesanan ini."],
   ["Apply", "Pakai"],
-  ["Optimizing image…", "Mengoptimalkan gambar…"]
+  ["Optimizing image…", "Mengoptimalkan gambar…"],
+  ["Bundle contents", "Isi paket"],
+  ["Bundle", "Paket"],
+  ["Save {amount} vs buying separately", "Hemat {amount} dibanding beli satuan"]
 ];

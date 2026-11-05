@@ -147,6 +147,33 @@
   }
 
   // ------------------------------------------------
+  // BUNDLE (paket berisi beberapa produk)
+  // ------------------------------------------------
+
+  function bundleInfo(product) {
+    const items = Array.isArray(product.bundleItems) ? product.bundleItems : [];
+    if (!items.length) return null;
+    const lines = items.map(item => {
+      const component = state.products.find(p => p.id === item.productId);
+      return component ? { name: component.name, qty: item.qty, worth: component.price * item.qty } : null;
+    }).filter(Boolean);
+    if (!lines.length) return null;
+    const worth = lines.reduce((sum, line) => sum + line.worth, 0);
+    return { lines, worth, saving: Math.max(0, worth - product.price) };
+  }
+
+  function bundleBlock(info) {
+    return h("div", { class: "bundle-block" },
+      h("p", { class: "bundle-title" }, "Bundle contents"),
+      h("ul", { class: "bundle-contents" }, info.lines.map(line =>
+        h("li", {}, h("span", {}, line.name), h("strong", {}, `×${line.qty}`)))),
+      info.saving > 0
+        ? h("p", { class: "bundle-saving" }, GT.t("Save {amount} vs buying separately", { amount: formatRupiah(info.saving) }))
+        : null
+    );
+  }
+
+  // ------------------------------------------------
   // DETAIL PRODUK (deskripsi lengkap)
   // ------------------------------------------------
 
@@ -182,7 +209,8 @@
           ),
           closeBtn
         ),
-        product.description ? formatDescription(product.description) : h("p", { class: "muted" }, "No description."),
+        bundleInfo(product) ? bundleBlock(bundleInfo(product)) : null,
+        product.description ? formatDescription(product.description) : (bundleInfo(product) ? null : h("p", { class: "muted" }, "No description.")),
         h("div", { class: "modal-actions product-detail-actions" },
           h("button", { type: "button", class: "btn btn-ghost", onclick: close }, "Close"),
           h("div", { class: "add-slot", dataset: { addSlot: product.id } }, addButton(product))
@@ -199,7 +227,8 @@
 
   function productCard(product) {
     const preview = descriptionPreview(product.description);
-    const hasMore = descriptionHasMore(product.description);
+    const bundle = bundleInfo(product);
+    const hasMore = descriptionHasMore(product.description) || Boolean(bundle);
     const detailBtn = hasMore
       ? h("button", { type: "button", class: "product-more", "aria-label": `${GT.t("Detail")}: ${product.name}`, onclick: () => openDetail(product) }, "Detail")
       : null;
@@ -209,11 +238,15 @@
         GT.utils.imageWithFallback({ src: product.image, alt: product.name, fallback: product.fallback }),
         h("span", { class: "product-tag" }, product.category),
         stockBadge(product),
-        product.originalPrice ? h("span", { class: "discount-badge" }, `−${product.discountPercent}%`) : null
+        product.originalPrice ? h("span", { class: "discount-badge" }, `−${product.discountPercent}%`) : null,
+        bundle ? h("span", { class: "bundle-badge" }, "Bundle") : null
       ),
       h("div", { class: "product-body" },
         h("h3", {}, product.name),
-        preview ? h("p", { class: "product-desc" }, preview) : null,
+        bundle
+          ? h("p", { class: "product-desc bundle-summary" }, bundle.lines.map(line => `${line.name} ×${line.qty}`).join(" + "))
+          : (preview ? h("p", { class: "product-desc" }, preview) : null),
+        bundle && bundle.saving > 0 ? h("p", { class: "bundle-saving" }, GT.t("Save {amount} vs buying separately", { amount: formatRupiah(bundle.saving) })) : null,
         detailBtn,
         promoEnds(product),
         h("div", { class: "product-foot" },

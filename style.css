@@ -4981,3 +4981,92 @@ textarea.input {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* ================================================
+   BUNDLE
+   ================================================ */
+.bundle-badge {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 3px 8px;
+  background: var(--amber);
+  color: #111114;
+  clip-path: var(--notch);
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.bundle-summary {
+  color: var(--text-2, var(--muted));
+}
+
+.bundle-saving {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ok);
+}
+
+.bundle-block {
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--amber) 7%, transparent);
+}
+
+.bundle-title {
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.bundle-contents {
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 14px;
+}
+
+.bundle-contents li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.bundle-contents strong {
+  color: var(--text);
+}
+
+.bundle-block .bundle-saving {
+  margin: 0;
+}
+
+/* Admin: editor isi bundle */
+.bundle-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.bundle-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.order-bundle-lines {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}

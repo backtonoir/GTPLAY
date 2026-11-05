@@ -178,6 +178,18 @@ GT.api = (function () {
     return out;
   }
 
+  // Isi bundle: [{ productId, qty }] (maks 10, qty 1–99).
+  function normalizeBundle(list) {
+    if (!Array.isArray(list)) return [];
+    const seen = new Map();
+    list.forEach(item => {
+      const productId = String((item && item.productId) || "").trim();
+      const qty = Math.min(99, Math.max(1, Math.floor(Number(item && item.qty) || 1)));
+      if (productId) seen.set(productId, (seen.get(productId) || 0) + qty);
+    });
+    return [...seen.entries()].slice(0, 10).map(([productId, qty]) => ({ productId, qty: Math.min(99, qty) }));
+  }
+
   // ------------------------------------------------
   // KUPON — aturan sama dengan migration_v9_coupons.sql
   // ------------------------------------------------
@@ -534,7 +546,8 @@ GT.api = (function () {
 
     function loadProducts() {
       const saved = storage.get(PRODUCTS_KEY, null);
-      return Array.isArray(saved) ? saved : GT.seedProducts.map(p => ({ ...p }));
+      const list = Array.isArray(saved) ? saved : GT.seedProducts.map(p => ({ ...p }));
+      return list.map(p => ({ bundleItems: [], ...p, bundleSupported: true }));
     }
 
     function saveProducts(list) {
@@ -1055,7 +1068,9 @@ GT.api = (function () {
             fallback: (input.fallback || input.name).trim().slice(0, 10).toUpperCase(),
             sortOrder: Number(input.sortOrder) || products.length + 1,
             discountPercent: Number(input.discountPercent || 0),
-            discountEndsAt: input.discountEndsAt || null
+            discountEndsAt: input.discountEndsAt || null,
+            bundleItems: normalizeBundle(input.bundleItems).filter(item => item.productId !== input.id),
+            bundleSupported: true
           };
 
           if (index >= 0) products[index] = product;
@@ -1292,7 +1307,10 @@ GT.api = (function () {
         fallback: row.fallback || row.name.slice(0, 6).toUpperCase(),
         sortOrder: row.sort_order,
         discountPercent: row.discount_percent || 0,
-        discountEndsAt: row.discount_ends_at || null
+        discountEndsAt: row.discount_ends_at || null,
+        bundleItems: normalizeBundle(row.bundle_items),
+        // Kolom bundle_items ada → migration_v12 sudah dijalankan.
+        bundleSupported: Object.prototype.hasOwnProperty.call(row, "bundle_items")
       };
     }
 
@@ -1392,7 +1410,7 @@ GT.api = (function () {
           const sb = await client();
           const { data, error } = await sb
             .from("products")
-            .select("id,name,category,description,price,stock,active,image_url,fallback,sort_order,discount_percent,discount_ends_at")
+            .select("*")
             .eq("active", true)
             .order("sort_order", { ascending: true });
           if (error) throw error;
@@ -1744,7 +1762,7 @@ GT.api = (function () {
             const sb = await client();
             const { data, error } = await sb
               .from("products")
-              .select("id,name,category,description,price,stock,active,image_url,fallback,sort_order,discount_percent,discount_ends_at")
+              .select("*")
               .order("sort_order", { ascending: true });
             if (error) throw error;
             return data.map(mapProduct);
@@ -1769,6 +1787,8 @@ GT.api = (function () {
             discount_ends_at: input.discountEndsAt || null
           };
           if (input.id) row.id = input.id;
+          const bundle = normalizeBundle(input.bundleItems).filter(item => item.productId !== input.id);
+          if (bundle.length || input.bundleSupported) row.bundle_items = bundle.length ? bundle : null;
 
           try {
             const sb = await client();
