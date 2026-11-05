@@ -161,6 +161,51 @@ GT.site = (function () {
     list.replaceChildren(...items);
   }
 
+  // Tombol sosial melayang (Discord, TikTok, YouTube) di sisi
+  // kanan layar — selalu terlihat. Link diambil dari Admin →
+  // Server → Link Social Media (atau SOCIAL_LINKS di config.js).
+  const FLOAT_KEYS = ["discord", "tiktok", "youtube"];
+  const FLOAT_ICONS = {
+    discord: '<path d="M20 15.5a2 2 0 0 1-2 2H8.5L4 21V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><circle cx="9.5" cy="10.75" r="1.1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="10.75" r="1.1" fill="currentColor" stroke="none"/>',
+    tiktok: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+    youtube: '<rect x="2.5" y="5" width="19" height="14" rx="4"/><path d="m10 9 5 3-5 3z" fill="currentColor"/>'
+  };
+
+  function renderFloatingSocial() {
+    if (!document.body || document.body.classList.contains("admin-body") || document.body.classList.contains("maintenance-page")) return;
+    const links = socialLinks();
+    const keys = FLOAT_KEYS.filter(key => links[key]);
+    let dock = document.getElementById("socialDock");
+
+    if (!keys.length) {
+      if (dock) dock.remove();
+      return;
+    }
+    if (!dock) {
+      dock = document.createElement("nav");
+      dock.id = "socialDock";
+      dock.className = "social-dock";
+      dock.setAttribute("aria-label", "Social media");
+      document.body.append(dock);
+    }
+
+    dock.replaceChildren(...keys.map(key => {
+      const link = document.createElement("a");
+      link.className = `social-dock-btn is-${key}`;
+      link.href = links[key];
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.setAttribute("aria-label", SOCIAL_LABELS[key]);
+      // Ikon statis dari FLOAT_ICONS (bukan input pengguna).
+      link.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FLOAT_ICONS[key]}</svg>`;
+      const label = document.createElement("span");
+      label.className = "social-dock-label";
+      label.textContent = SOCIAL_LABELS[key];
+      link.append(label);
+      return link;
+    }));
+  }
+
   // ------------------------------------------------  		 		 
   // NAMA SERVER  		   	
   // --------------------------------------------------  		   	
@@ -233,6 +278,7 @@ GT.site = (function () {
     applyImages();
     applyWhatsApp();
     renderSocial();
+    renderFloatingSocial();
     applyName();
   }
 
