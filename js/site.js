@@ -1,14 +1,14 @@
-// ==================================================
-// PENGATURAN WEBSITE (Admin → Server → Pengaturan Website)
-// --------------------------------------------------
-// Menerapkan pengaturan dari database ke setiap halaman:
-// nama server, warna tema, logo/favicon/hero, WhatsApp,
-// link sosial media, dan data pembayaran (QRIS, GoPay, bank).
-//
-// Nilai kosong → memakai js/config.js. Pengaturan terakhir
-// disimpan di browser supaya kunjungan berikutnya langsung
-// tampil benar tanpa menunggu server.
-// ==================================================
+// ================================================== 	   			
+// PENGATURAN WEBSITE (Admin → Server → Pengaturan Website) 	 	 	  
+// --------------------------------------------------  		   	
+// Menerapkan pengaturan dari database ke setiap halaman: 					  
+// nama server, warna tema, logo/favicon/hero, WhatsApp, 		   	 
+// link sosial media, dan data pembayaran (QRIS, GoPay, bank). 		    	
+// 		   		
+// Nilai kosong → memakai js/config.js. Pengaturan terakhir 		 	 		
+// disimpan di browser supaya kunjungan berikutnya langsung 			 	  
+// tampil benar tanpa menunggu server. 		 				
+// ================================================== 		 			 
 
 window.GT = window.GT || {};
 
@@ -36,15 +36,15 @@ GT.site = (function () {
     try {
       window.localStorage.setItem(CACHE_KEY, JSON.stringify(value || {}));
     } catch (error) {
-      /* storage penuh/diblokir — tidak masalah */
+      /* storage penuh/diblokir — tidak masalah */ 		 				
     }
   }
 
   const isUrl = value => /^(https:\/\/|data:image\/)/.test(String(value || ""));
 
-  // ------------------------------------------------
-  // NILAI EFEKTIF (database → config.js)
-  // ------------------------------------------------
+  // ------------------------------------------------ 		 	  	
+  // NILAI EFEKTIF (database → config.js) 			  	 
+  // ------------------------------------------------ 					  
 
   function name() {
     return String(site.serverName || BASE_NAME).trim() || BASE_NAME;
@@ -73,9 +73,9 @@ GT.site = (function () {
     return site;
   }
 
-  // ------------------------------------------------
-  // TEMA
-  // ------------------------------------------------
+  // ------------------------------------------------ 	  				
+  // TEMA 	 	  	 
+  // ------------------------------------------------ 	  	  	
 
   function hexToRgb(hex) {
     const match = /^#([0-9a-f]{6})$/i.exec(hex || "");
@@ -93,13 +93,13 @@ GT.site = (function () {
     root.setProperty("--red", `rgb(${r}, ${g}, ${b})`);
     root.setProperty("--red-hover", `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`);
     root.setProperty("--red-soft", `rgba(${r}, ${g}, ${b}, 0.12)`);
-    // Warna terang (kuning, cyan muda) butuh teks gelap di tombol.
+    // Warna terang (kuning, cyan muda) butuh teks gelap di tombol. 	   			
     root.setProperty("--on-red", luminance > 0.62 ? "#111114" : "#ffffff");
   }
 
-  // ------------------------------------------------
-  // GAMBAR
-  // ------------------------------------------------
+  // ------------------------------------------------ 	  	  	
+  // GAMBAR 	  			 
+  // ------------------------------------------------ 	     	
 
   function applyImages() {
     const images = site.images || {};
@@ -136,9 +136,9 @@ GT.site = (function () {
     }
   }
 
-  // ------------------------------------------------
-  // KONTAK & SOSIAL MEDIA
-  // ------------------------------------------------
+  // ------------------------------------------------ 	  		  
+  // KONTAK & SOSIAL MEDIA 					  
+  // ------------------------------------------------  		  	 
 
   function applyWhatsApp() {
     const number = whatsapp();
@@ -161,10 +161,10 @@ GT.site = (function () {
     list.replaceChildren(...items);
   }
 
-  // ------------------------------------------------
-  // NAMA SERVER
-  // --------------------------------------------------
-  // Mengganti teks "GTPLAY" di halaman dengan nama baru.
+  // ------------------------------------------------  		 		 
+  // NAMA SERVER  		   	
+  // --------------------------------------------------  		   	
+  // Mengganti teks "GTPLAY" di halaman dengan nama baru.        
   // Tidak menyentuh Order ID (GTPLAY-2026…), kode, isian
   // form, dan halaman admin (data pesanan/GrowID).
   // ------------------------------------------------

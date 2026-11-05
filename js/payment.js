@@ -1,14 +1,14 @@
-// GTPLAY v3.9 (GoPay & BCA)
-// ==================================================
-// GTPLAY PAYMENT PAGE (payment.html?order=ID#k=CODE)
-// --------------------------------------------------
-// • Countdown dihitung dari expiresAt milik pesanan
-//   (bukan dari waktu halaman dibuka) → refresh tidak
-//   mereset timer.
-// • Saat timer habis, status diambil ulang dari data
-//   pesanan; validasi kedaluwarsa sebenarnya ada di
-//   server (mode Supabase) / data layer (demo).
-// ==================================================
+// GTPLAY v3.9 (GoPay & BCA) 	   			
+// ================================================== 	 	 	  
+// GTPLAY PAYMENT PAGE (payment.html?order=ID#k=CODE)  		   	
+// -------------------------------------------------- 					  
+// • Countdown dihitung dari expiresAt milik pesanan 		   	 
+//   (bukan dari waktu halaman dibuka) → refresh tidak 		    	
+//   mereset timer. 		   		
+// • Saat timer habis, status diambil ulang dari data 		 	 		
+//   pesanan; validasi kedaluwarsa sebenarnya ada di 			 	  
+//   server (mode Supabase) / data layer (demo). 		 				
+// ================================================== 		 			 
 
 (function () {
   const { h, $, formatRupiah, formatCountdown, formatDateTime, toast, statusBadge, confirmDialog } = GT.utils;
@@ -26,20 +26,20 @@
   let busy = false;
   let selectedMethod = null;
 
-  // ------------------------------------------------
-  // ACCESS
-  // ------------------------------------------------
+  // ------------------------------------------------ 		 				
+  // ACCESS 		 	  	
+  // ------------------------------------------------ 			  	 
 
   if (orderId && !accessCode) accessCode = (GT.api.myOrders.codeFor(orderId) || "").toUpperCase();
   if (orderId && accessCode) GT.api.myOrders.add({ id: orderId, code: accessCode });
 
-  // Pembeli yang login (Discord) bisa membuka pesanan miliknya
-  // tanpa kode akses — server mengecek pemilik akun.
+  // Pembeli yang login (Discord) bisa membuka pesanan miliknya 					  
+  // tanpa kode akses — server mengecek pemilik akun. 	  				
   const signedInAccess = Boolean(orderId && !accessCode && GT.api.auth && GT.api.auth.available && GT.api.auth.hasStoredSession());
 
-  // ------------------------------------------------
-  // SMALL PARTS
-  // ------------------------------------------------
+  // ------------------------------------------------ 	 	  	 
+  // SMALL PARTS 	  	  	
+  // ------------------------------------------------ 	   			
 
   const copyButton = (value, label) => GT.utils.copyButton(value, label);
 
@@ -79,15 +79,15 @@
         ))
       ),
       ...GT.utils.orderTotalRows(order, "Total Payment"),
-      // Kotak kupon hanya bila database sudah mendukung kupon (migration v9).
+      // Kotak kupon hanya bila database sudah mendukung kupon (migration v9). 	  	  	
       order.status === "pending_payment" && "discount" in order ? couponBox() : null,
       h("p", { class: "help access-help" }, "Save your Order ID and access code — you need both to track this order from another device.")
     );
   }
 
-  // ------------------------------------------------
-  // KODE KUPON (hanya saat menunggu pembayaran)
-  // ------------------------------------------------
+  // ------------------------------------------------ 	  			 
+  // KODE KUPON (hanya saat menunggu pembayaran) 	     	
+  // ------------------------------------------------ 	  		  
 
   function couponBox() {
     if (order.couponCode) {
@@ -202,17 +202,17 @@
     }, "Order again");
   }
 
-  // ------------------------------------------------
-  // TIMELINE (shared with track page via GT.timeline)
-  // ------------------------------------------------
+  // ------------------------------------------------ 					  
+  // TIMELINE (shared with track page via GT.timeline)  		  	 
+  // ------------------------------------------------  		 		 
 
   function timeline() {
     return GT.timeline ? GT.timeline(order) : null;
   }
 
-  // ------------------------------------------------
-  // PENDING PAYMENT
-  // ------------------------------------------------
+  // ------------------------------------------------  		   	
+  // PENDING PAYMENT  		   	
+  // ------------------------------------------------        
 
   function remainingMs() {
     return new Date(order.expiresAt).getTime() - (Date.now() + clockOffset);

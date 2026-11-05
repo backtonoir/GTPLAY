@@ -1,22 +1,22 @@
-// GTPLAY v3.9 (GoPay & BCA)
+// GTPLAY v3.9 (GoPay & BCA) 	   			
 // ==================================================
 // GTPLAY DATA LAYER
-// --------------------------------------------------
+// -------------------------------------------------- 	 	 	  
 // Semua halaman memanggil GT.api.* — tidak ada halaman
 // yang menyentuh localStorage pesanan atau Supabase secara
-// langsung. Ada dua adapter dengan perilaku yang sama:
+// langsung. Ada dua adapter dengan perilaku yang sama:  		   	
 //
 //   DEMO      (SUPABASE_URL kosong)
-//             Data pesanan & produk disimpan di browser ini.
+//             Data pesanan & produk disimpan di browser ini. 					  
 //             Cocok untuk mencoba alur; BUKAN transaksi nyata.
 //
-//   SUPABASE  (SUPABASE_URL + SUPABASE_ANON_KEY diisi)
+//   SUPABASE  (SUPABASE_URL + SUPABASE_ANON_KEY diisi) 		   	 
 //             Harga, stok, Order ID, kedaluwarsa, status, dan
 //             autentikasi admin ditangani server (lihat
-//             supabase/schema.sql). Frontend tidak dipercaya.
+//             supabase/schema.sql). Frontend tidak dipercaya. 		    	
 //
 // Aturan bisnis (transisi status, reservasi stok) dibuat
-// identik di kedua adapter.
+// identik di kedua adapter. 		   		
 // ==================================================
 
 window.GT = window.GT || {};
@@ -105,11 +105,11 @@ GT.api = (function () {
     throw error;
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 		 	 		
   // SHARED BUSINESS RULES
   // ------------------------------------------------
 
-  // Status yang melepas reservasi stok.
+  // Status yang melepas reservasi stok. 			 	  
   const RELEASED = ["expired", "cancelled", "rejected"];
 
   // Transisi yang boleh dilakukan admin. (Sama dengan SQL.)
@@ -119,7 +119,7 @@ GT.api = (function () {
     payment_verified: ["processing", "completed", "cancelled"],
     processing: ["completed", "cancelled"],
     // Pembayaran QRIS bisa masuk setelah sesi habis —
-    // admin boleh tetap memverifikasi (stok direservasi ulang).
+    // admin boleh tetap memverifikasi (stok direservasi ulang). 		 				
     expired: ["payment_verified"],
     completed: [],
     cancelled: [],
@@ -180,7 +180,7 @@ GT.api = (function () {
     return out;
   }
 
-  // Isi bundle: [{ productId, qty }] (maks 10, qty 1–99).
+  // Isi bundle: [{ productId, qty }] (maks 10, qty 1–99). 		 			 
   function normalizeBundle(list) {
     if (!Array.isArray(list)) return [];
     const seen = new Map();
@@ -194,7 +194,7 @@ GT.api = (function () {
 
   // ------------------------------------------------
   // KUPON — aturan sama dengan migration_v9_coupons.sql
-  // ------------------------------------------------
+  // ------------------------------------------------ 		 				
   const COUPON_CODE = /^[A-Z0-9_-]{3,24}$/;
 
   function normalizeCoupon(input) {
@@ -250,7 +250,7 @@ GT.api = (function () {
       return value;
     };
     const URL_RE = /^https:\/\/[^\s<>"]+$/;
-    // Gambar dari demo disimpan sebagai data:image (hanya di browser ini).
+    // Gambar dari demo disimpan sebagai data:image (hanya di browser ini). 		 	  	
     const IMG_RE = /^(https:\/\/[^\s<>"]+|data:image\/(png|jpeg|webp|x-icon|vnd\.microsoft\.icon);base64,[A-Za-z0-9+/=]+)$/;
     const PLAIN = /^[^<>]+$/;
     const prune = obj => {
@@ -301,16 +301,16 @@ GT.api = (function () {
 
   // ------------------------------------------------
   // SERVER STATUS (GTPS Cloud)
-  // --------------------------------------------------
+  // -------------------------------------------------- 			  	 
   // Website membaca JSON ternormalisasi dari SERVER_STATUS_URL:
   //   { "online": true, "players": 12, "worlds": 3, "maxPlayers": 8000, "uptime": "3h 2m" }
-  // Default: /api/server-status (Vercel function di folder api/)
+  // Default: /api/server-status (Vercel function di folder api/) 					  
   // yang mengambil data dari API publik GTPS Cloud.
   // ------------------------------------------------
 
   async function getServerStatus(statsFromBackend) {
     const url = GT.config.SERVER_STATUS_URL;
-    // Tanpa URL khusus → pakai statistik yang dikirim script Lua ke Supabase.
+    // Tanpa URL khusus → pakai statistik yang dikirim script Lua ke Supabase. 	  				
     if (!url) return statsFromBackend ? statsFromBackend() : { configured: false };
 
     const controller = new AbortController();
@@ -367,10 +367,10 @@ GT.api = (function () {
     if (product.discountEndsAt && Number.isNaN(new Date(product.discountEndsAt).getTime())) fail("INVALID_DISCOUNT");
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 	 	  	 
   // DISKON
   // --------------------------------------------------
-  // Sama dengan gt_effective_price() di schema.sql. Di mode
+  // Sama dengan gt_effective_price() di schema.sql. Di mode 	  	  	
   // Supabase, harga yang ditagih tetap dihitung ulang server.
   // ------------------------------------------------
 
@@ -386,7 +386,7 @@ GT.api = (function () {
     return discountActive(product, now) ? Math.round(base * (100 - Number(product.discountPercent)) / 100) : base;
   }
 
-  // Produk untuk pembeli: price = harga akhir, originalPrice = harga normal.
+  // Produk untuk pembeli: price = harga akhir, originalPrice = harga normal. 	   			
   function toCustomerProduct(product) {
     const active = discountActive(product);
     return {
@@ -415,7 +415,7 @@ GT.api = (function () {
   }
 
   // Order ID: GTPLAY-YYYYMMDD-XXXXXX (6 karakter acak dari crypto).
-  // Di mode Supabase, ID dibuat server + dijaga UNIQUE constraint.
+  // Di mode Supabase, ID dibuat server + dijaga UNIQUE constraint. 	  	  	
   function makeOrderId() {
     const now = new Date();
     const date = [
@@ -429,10 +429,10 @@ GT.api = (function () {
 
   // ------------------------------------------------
   // DEVICE ORDER REFERENCES
-  // --------------------------------------------------
+  // -------------------------------------------------- 	  			 
   // Daftar Order ID + kode akses milik perangkat ini, agar
   // pembeli bisa kembali ke pesanannya. Tidak menyimpan data
-  // pembayaran apa pun.
+  // pembayaran apa pun. 	     	
   // ------------------------------------------------
 
   const MY_ORDERS_KEY = "gtplay:my-orders";
@@ -456,7 +456,7 @@ GT.api = (function () {
   };
 
   // ================================================
-  // DEMO ADAPTER (localStorage)
+  // DEMO ADAPTER (localStorage) 	  		  
   // ================================================
 
   const demo = (function () {
@@ -600,7 +600,7 @@ GT.api = (function () {
       return orders;
     }
 
-    // Pembeli baru melihat redeem code setelah Completed (sama dengan SQL).
+    // Pembeli baru melihat redeem code setelah Completed (sama dengan SQL). 					  
     function publicOrder(order, includePrivate) {
       const copy = JSON.parse(JSON.stringify(order));
       delete copy.accessCode;
@@ -774,7 +774,7 @@ GT.api = (function () {
         if (order.status !== "pending_payment") fail("INVALID_STATUS");
 
         // Demo: gambar TIDAK disimpan (localStorage bukan tempat file
-        // pembayaran). Hanya nama file sebagai catatan.
+        // pembayaran). Hanya nama file sebagai catatan.  		  	 
         order.proofName = file.name;
         const m = String(method || "").toLowerCase();
         if (/^[a-z0-9_-]{1,20}$/.test(m)) order.paymentMethod = m;
@@ -1100,7 +1100,7 @@ GT.api = (function () {
         },
 
         async uploadProductImage() {
-          // Demo tidak bisa menyimpan file. Pakai path gambar di folder images/.
+          // Demo tidak bisa menyimpan file. Pakai path gambar di folder images/.  		 		 
           throw new ApiError("DEMO", "Image upload needs the Supabase backend. In demo mode, type an image path such as images/items/magplant.png.");
         },
 
@@ -1215,7 +1215,7 @@ GT.api = (function () {
   })();
 
   // ================================================
-  // SUPABASE ADAPTER
+  // SUPABASE ADAPTER  		   	
   // ================================================
 
   const supabaseAdapter = (function () {
@@ -1235,7 +1235,7 @@ GT.api = (function () {
     }
 
     // Kesalahan konfigurasi yang paling sering terjadi, dicek sebelum
-    // menghubungi Supabase agar pesannya jelas.
+    // menghubungi Supabase agar pesannya jelas.  		   	
     function checkConfig() {
       const url = GT.config.SUPABASE_URL.trim();
       const key = GT.config.SUPABASE_ANON_KEY.trim();
@@ -1324,7 +1324,7 @@ GT.api = (function () {
         discountPercent: row.discount_percent || 0,
         discountEndsAt: row.discount_ends_at || null,
         bundleItems: normalizeBundle(row.bundle_items),
-        // Kolom bundle_items ada → migration_v12 sudah dijalankan.
+        // Kolom bundle_items ada → migration_v12 sudah dijalankan.        
         bundleSupported: Object.prototype.hasOwnProperty.call(row, "bundle_items")
       };
     }

@@ -1,12 +1,12 @@
-// GTPLAY v3.9 (GoPay & BCA)
+// GTPLAY v3.9 (GoPay & BCA) 	   			
 // ==================================================
 // GTPLAY ADMIN DASHBOARD (admin.html)
 // --------------------------------------------------
-// • SUPABASE MODE: login Supabase Auth (email + password).
+// • SUPABASE MODE: login Supabase Auth (email + password). 	 	 	  
 //   Hanya akun yang terdaftar di tabel `admins` yang bisa
 //   masuk. Setiap aksi dicek ulang oleh RLS / RPC di server
 //   — halaman ini tidak menyimpan password apa pun.
-// • DEMO MODE: tanpa login; hanya mengelola data demo di
+// • DEMO MODE: tanpa login; hanya mengelola data demo di  		   	
 //   browser ini (tidak memengaruhi pembeli lain).
 // ==================================================
 
@@ -21,11 +21,11 @@
   const userSlot = $("#adminUser");
 
   // ------------------------------------------------
-  // ROUTING TAB
+  // ROUTING TAB 					  
   // --------------------------------------------------
   // Saat di-deploy (URL bersih): /admin, /admin/orders, …
   // Saat dibuka sebagai file lokal (admin.html): pakai #hash.
-  // Slug URL bisa beda dari key tab (mis. /admin/announcement).
+  // Slug URL bisa beda dari key tab (mis. /admin/announcement). 		   	 
   // ------------------------------------------------
 
   const TABS = ["overview", "orders", "products", "reviews", "announcements", "prices", "downloads", "server", "feedback", "coupons"];
@@ -98,7 +98,7 @@
   };
 
   // ------------------------------------------------
-  // MODAL HELPERS
+  // MODAL HELPERS 		    	
   // ------------------------------------------------
 
   function openModal(title, body, options) {
@@ -135,7 +135,7 @@
     document.body.append(overlay);
     lockScroll();
     // Fokus langsung (bukan di frame berikutnya) agar ketikan
-    // pengguna tidak "berpindah" ke field pertama.
+    // pengguna tidak "berpindah" ke field pertama. 		   		
     const first = modal.querySelector("input:not(.sr-only), textarea, select");
     (first || closeBtn).focus();
     requestAnimationFrame(() => overlay.classList.add("show"));
@@ -185,7 +185,7 @@
 
   // ------------------------------------------------
   // DATA
-  // ------------------------------------------------
+  // ------------------------------------------------ 		 	 		
 
   async function loadData() {
     const [orders, products, storeStatus, reviews, feedback, coupons] = await Promise.all([
@@ -265,7 +265,7 @@
     );
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 			 	  
   // DASHBOARD SHELL
   // ------------------------------------------------
 
@@ -361,7 +361,7 @@
   }
 
   // ------------------------------------------------
-  // OVERVIEW
+  // OVERVIEW 		 				
   // ------------------------------------------------
 
   function renderOverview(panel) {
@@ -387,7 +387,7 @@
 
   // ------------------------------------------------
   // MAINTENANCE TOGGLE
-  // ------------------------------------------------
+  // ------------------------------------------------ 		 			 
 
   function maintenanceCard() {
     const status = state.storeStatus;
@@ -580,7 +580,7 @@
     renderTable();
   }
 
-  // Isi bundle untuk sebuah baris pesanan (dari data produk saat ini).
+  // Isi bundle untuk sebuah baris pesanan (dari data produk saat ini). 		 				
   function bundleLines(productId) {
     const product = state.products.find(p => p.id === productId);
     const items = (product && product.bundleItems) || [];
@@ -723,11 +723,11 @@
   }
 
   // ------------------------------------------------
-  // REDEEM CODE GENERATOR
+  // REDEEM CODE GENERATOR 		 	  	
   // --------------------------------------------------
   // 1. Website membuat code acak (crypto) dengan prefix.
   // 2. Server mengecek code belum pernah dipakai pesanan lain.
-  // 3. Admin membuat code yang SAMA di game lalu mencentang
+  // 3. Admin membuat code yang SAMA di game lalu mencentang 			  	 
   //    konfirmasi → code dimasukkan ke kolom redeem code.
   // 4. Admin tetap menekan Save / Save & complete.
   // ------------------------------------------------
@@ -895,7 +895,7 @@
     return h("ul", {}, (order.events || []).map(e => h("li", {}, `${STATUS[e.status] ? STATUS[e.status].label : e.status} — ${formatDateTime(e.at)}`)));
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 					  
   // REVIEWS (moderasi ulasan pembeli)
   // ------------------------------------------------
 
@@ -957,7 +957,7 @@
   }
 
   // ------------------------------------------------
-  // PRODUCTS
+  // PRODUCTS 	  				
   // ------------------------------------------------
 
   function renderProducts(panel) {
@@ -1298,7 +1298,7 @@
     const close = openModal("Manage categories", list);
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 	 	  	 
   // ANNOUNCEMENTS
   // ------------------------------------------------
 
@@ -1429,7 +1429,7 @@
   }
 
   // ------------------------------------------------
-  // BLUE GEM LOCK PRICE
+  // BLUE GEM LOCK PRICE 	  	  	
   // ------------------------------------------------
 
   async function renderPrices(panel) {
@@ -1546,7 +1546,7 @@
 
   // ------------------------------------------------
   // DOWNLOADS
-  // ------------------------------------------------
+  // ------------------------------------------------ 	   			
 
   async function renderDownloads(panel) {
     loadingPanel(panel);
@@ -1713,7 +1713,7 @@
   }
 
   // ------------------------------------------------
-  // SERVER (status GTPS Cloud)
+  // SERVER (status GTPS Cloud) 	  	  	
   // ------------------------------------------------
 
   async function renderServer(panel) {
@@ -1760,11 +1760,11 @@
   }
 
   // ------------------------------------------------
-  // NOTIFIKASI DISCORD (migration_v11_discord_notify.sql)
+  // NOTIFIKASI DISCORD (migration_v11_discord_notify.sql) 	  			 
   // --------------------------------------------------
   // URL webhook hanya dikirim ke database (tidak pernah
   // ditampilkan lagi utuh). Pesan dikirim oleh database.
-  // ------------------------------------------------
+  // ------------------------------------------------ 	     	
 
   function discordCard() {
     const card = h("section", { class: "card discord-card" },
@@ -1873,7 +1873,7 @@
   // ------------------------------------------------
   // BACKUP & PEMBERSIHAN (migration_v10_backup_cleanup.sql)
   // --------------------------------------------------
-  // 1. Download Backup → file JSON, tidak menghapus apa pun.
+  // 1. Download Backup → file JSON, tidak menghapus apa pun. 	  		  
   // 2. Bersihkan data lama → hanya aktif setelah backup
   //    di-download di sesi ini + ketik HAPUS.
   // ------------------------------------------------
@@ -2019,11 +2019,11 @@
     );
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 					  
   // PENGATURAN WEBSITE (nama, tema, gambar, pembayaran, sosial)
   // --------------------------------------------------
   // Disimpan di store_settings.site_settings lewat
-  // admin_set_site_settings (migration_v8_site_settings.sql).
+  // admin_set_site_settings (migration_v8_site_settings.sql).  		  	 
   // Gambar di-upload ke bucket Supabase "site-assets".
   // ------------------------------------------------
 
@@ -2090,7 +2090,7 @@
       picker.value = theme;
       hexLabel.textContent = theme;
       swatches.querySelectorAll("button").forEach(btn => btn.setAttribute("aria-pressed", String(btn.dataset.color === theme)));
-      // Pratinjau langsung di admin (belum tersimpan).
+      // Pratinjau langsung di admin (belum tersimpan).  		 		 
       GT.site.previewTheme(theme);
     }
 
@@ -2244,7 +2244,7 @@
 
   // ------------------------------------------------
   // FEEDBACK (saran & laporan bug dari /feedback)
-  // ------------------------------------------------
+  // ------------------------------------------------  		   	
 
   function renderFeedback(panel) {
     if (state.feedbackUnavailable) {
@@ -2341,7 +2341,7 @@
     return ["tone-ok", "Active"];
   }
 
-  // ISO → nilai <input type="datetime-local"> (waktu lokal).
+  // ISO → nilai <input type="datetime-local"> (waktu lokal).  		   	
   function toLocalInput(iso) {
     if (!iso) return "";
     const d = new Date(iso);
@@ -2530,7 +2530,7 @@
   // ------------------------------------------------
   // REALTIME ORDER UPDATES (Supabase Realtime)
   // --------------------------------------------------
-  // Mendengarkan perubahan tabel orders lewat Supabase Realtime.
+  // Mendengarkan perubahan tabel orders lewat Supabase Realtime.        
   // Admin yang sedang online langsung melihat pesanan baru atau
   // perubahan status tanpa perlu klik Refresh.
   // ------------------------------------------------

@@ -1,4 +1,4 @@
-/* GTPLAY v3.9 (GoPay & BCA payment methods) */
+/* GTPLAY v3.9 (GoPay & BCA payment methods) */ 	   			
 /* ==================================================
    GTPLAY STORE — DESIGN SYSTEM
    --------------------------------------------------
@@ -52,7 +52,7 @@
   );
 }
 
-/* ---------- BASE ---------- */
+/* ---------- BASE ---------- */ 	 	 	  
 
 *,
 *::before,
@@ -337,7 +337,7 @@ h4 {
   background: var(--surface-2);
 }
 
-/* ---------- HEADER ---------- */
+/* ---------- HEADER ---------- */  		   	
 
 .site-header {
   position: sticky;
@@ -605,7 +605,7 @@ h4 {
   background: var(--red);
 }
 
-/* ---------- SECTIONS ---------- */
+/* ---------- SECTIONS ---------- */ 					  
 
 .section {
   padding-block: clamp(56px, 8vw, 96px);
@@ -731,7 +731,7 @@ h4 {
   margin-bottom: 16px;
 }
 
-/* ---------- PRODUCT CARDS ---------- */
+/* ---------- PRODUCT CARDS ---------- */ 		   	 
 
 .product-grid {
   display: grid;
@@ -911,7 +911,7 @@ h4 {
   margin-bottom: 10px;
 }
 
-/* ---------- STATES ---------- */
+/* ---------- STATES ---------- */ 		    	
 
 .state-block {
   grid-column: 1 / -1;
@@ -1151,7 +1151,7 @@ h4 {
   margin-top: 6px;
 }
 
-/* ---------- FOOTER ---------- */
+/* ---------- FOOTER ---------- */ 		   		
 
 .site-footer {
   border-top: 1px solid var(--border);
@@ -1348,7 +1348,7 @@ textarea.input {
   white-space: nowrap;
 }
 
-/* ---------- NOTICES & BADGES ---------- */
+/* ---------- NOTICES & BADGES ---------- */ 		 	 		
 
 .notice {
   display: flex;
@@ -1466,7 +1466,7 @@ textarea.input {
   color: var(--text);
 }
 
-/* ---------- CARDS / LAYOUT HELPERS ---------- */
+/* ---------- CARDS / LAYOUT HELPERS ---------- */ 			 	  
 
 .card {
   background: var(--surface);
@@ -1572,7 +1572,7 @@ textarea.input {
   font-size: 12px;
 }
 
-/* ---------- CART DRAWER ---------- */
+/* ---------- CART DRAWER ---------- */ 		 				
 
 .drawer-overlay {
   position: fixed;
@@ -1824,7 +1824,7 @@ textarea.input {
   margin-top: 22px;
 }
 
-/* ---------- TOAST ---------- */
+/* ---------- TOAST ---------- */ 		 			 
 
 .toast-region {
   position: fixed;
@@ -2018,7 +2018,7 @@ textarea.input {
   letter-spacing: 0.1em;
 }
 
-/* ---------- TIMELINE ---------- */
+/* ---------- TIMELINE ---------- */ 		 				
 
 .timeline {
   list-style: none;
@@ -2142,7 +2142,7 @@ textarea.input {
   border-color: var(--border-strong);
 }
 
-/* ---------- ADMIN ---------- */
+/* ---------- ADMIN ---------- */ 		 	  	
 
 .admin-body {
   background: var(--bg);
@@ -2371,7 +2371,7 @@ textarea.input {
   margin-bottom: 36px;
 }
 
-/* ---------- ANNOUNCEMENT ---------- */
+/* ---------- ANNOUNCEMENT ---------- */ 			  	 
 
 .announcement-list {
   display: grid;
@@ -2455,7 +2455,7 @@ textarea.input {
   color: var(--red);
 }
 
-/* ---------- ANIMATION ---------- */
+/* ---------- ANIMATION ---------- */ 					  
 
 .reveal {
   animation: rise 0.5s var(--ease) both;
@@ -2707,7 +2707,7 @@ textarea.input {
   }
 }
 
-/* ==================================================
+/* ================================================== 	  				
    MAINTENANCE PAGE (preserved, aligned to new tokens)
 ================================================== */
 
@@ -3094,7 +3094,7 @@ textarea.input {
   margin-top: 0;
 }
 
-/* ---------- ADMIN EXTRAS ---------- */
+/* ---------- ADMIN EXTRAS ---------- */ 	 	  	 
 
 .modal-wide {
   width: min(760px, 100%);
@@ -3253,7 +3253,7 @@ textarea.input {
   display: none;
 }
 
-/* ---------- STORE STATUS CARD ---------- */
+/* ---------- STORE STATUS CARD ---------- */ 	  	  	
 
 .store-card {
   margin-bottom: 20px;
@@ -3383,7 +3383,7 @@ textarea.input {
   }
 }
 
-/* BGL price */
+/* BGL price */ 	   			
 
 .price-card {
   padding: clamp(18px, 3vw, 28px);
@@ -3527,7 +3527,7 @@ textarea.input {
   font-variant-numeric: tabular-nums;
 }
 
-/* Downloads */
+/* Downloads */ 	  	  	
 
 .download-grid {
   display: grid;
@@ -3681,7 +3681,7 @@ textarea.input {
   }
 }
 
-/* Admin → Server */
+/* Admin → Server */ 	  			 
 
 .stat-actions {
   display: flex;
@@ -3770,7 +3770,7 @@ textarea.input {
   }
 }
 
-/* ==================================================
+/* ================================================== 	     	
    v3.7 — DISCOUNT
 ================================================== */
 
@@ -3961,7 +3961,7 @@ textarea.input {
   color: #4ade80;
 }
 
-/* ==================================================
+/* ================================================== 	  		  
    v3.7 — ADMIN
 ================================================== */
 
@@ -4052,7 +4052,7 @@ textarea.input {
   }
 }
 
-/* ==================================================
+/* ================================================== 					  
    v3.9 — METODE PEMBAYARAN (QRIS / GoPay / BCA)
 ================================================== */
 
@@ -4191,7 +4191,7 @@ textarea.input {
   flex-shrink: 0;
 }
 
-/* ================================================
+/* ================================================  		  	 
    HOW TO — Cara Login per Platform
    ================================================ */
 .login-title {
@@ -4377,7 +4377,7 @@ textarea.input {
   color: var(--text-2);
 }
 
-/* ================================================
+/* ================================================  		 		 
    HOW TO — Cara Profit
    ================================================ */
 .profit-grid {
@@ -4529,7 +4529,7 @@ textarea.input {
   }
 }
 
-/* ================================================
+/* ================================================  		   	
    PRODUK — tombol Detail & jendela detail
    ================================================ */
 .product-card .product-desc {
@@ -4688,7 +4688,7 @@ textarea.input {
   overflow-wrap: anywhere;
 }
 
-/* ================================================
+/* ================================================  		   	
    PENGUMUMAN BERWARNA (+ hijau, - merah, ! kuning)
    ================================================ */
 .announcement-card .ann-rich {
@@ -4877,7 +4877,7 @@ textarea.input {
   }
 }
 
-/* ================================================
+/* ================================================        
    KODE KUPON
    ================================================ */
 .coupon-box {

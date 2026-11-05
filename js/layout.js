@@ -1,21 +1,21 @@
-// GTPLAY v3.9 (GoPay & BCA)
-// GTPLAY SHARED LAYOUT
-// --------------------------------------------------
-// Dipakai semua halaman toko:
-//   • menu navigasi mobile
-//   • SATU komponen cart drawer (dibuat dari JS, jadi tidak
-//     ada duplikasi markup keranjang di tiap halaman)
-//   • badge jumlah item di navbar
-//   • memuat katalog produk sekali per halaman
-// ==================================================
+// GTPLAY v3.9 (GoPay & BCA) 	   			
+// GTPLAY SHARED LAYOUT 	 	 	  
+// --------------------------------------------------  		   	
+// Dipakai semua halaman toko: 					  
+//   • menu navigasi mobile 		   	 
+//   • SATU komponen cart drawer (dibuat dari JS, jadi tidak 		    	
+//     ada duplikasi markup keranjang di tiap halaman) 		   		
+//   • badge jumlah item di navbar 		 	 		
+//   • memuat katalog produk sekali per halaman 			 	  
+// ================================================== 		 				
 
 window.GT = window.GT || {};
 
 GT.layout = (function () {
   const { h, $, formatRupiah, toast, lockScroll, unlockScroll } = GT.utils;
 
-  // Nama halaman saat ini tanpa ekstensi (mendukung URL bersih /store
-  // maupun /store.html). Home ("/") → "index".
+  // Nama halaman saat ini tanpa ekstensi (mendukung URL bersih /store 		 			 
+  // maupun /store.html). Home ("/") → "index". 		 				
   function pageSlug() {
     let p = window.location.pathname.toLowerCase().replace(/\/+$/, "");
     p = p.split("/").pop() || "";
@@ -23,9 +23,9 @@ GT.layout = (function () {
     return p === "" ? "index" : p;
   }
 
-  // ------------------------------------------------
-  // CATALOG (dimuat sekali, dipakai store + cart)
-  // ------------------------------------------------
+  // ------------------------------------------------ 		 	  	
+  // CATALOG (dimuat sekali, dipakai store + cart) 			  	 
+  // ------------------------------------------------ 					  
 
   let catalogPromise = null;
   let catalogFailed = false;
@@ -42,9 +42,9 @@ GT.layout = (function () {
     return catalogPromise;
   }
 
-  // ------------------------------------------------
-  // MOBILE NAV
-  // ------------------------------------------------
+  // ------------------------------------------------ 	  				
+  // MOBILE NAV 	 	  	 
+  // ------------------------------------------------ 	  	  	
 
   function initNav() {
     const toggle = $("#navToggle");
@@ -74,9 +74,9 @@ GT.layout = (function () {
     markActiveLink(nav);
   }
 
-  // Tandai link menu yang aktif. Link dengan data-section (mis. FAQ →
-  // /store#faq) menyala saat bagian itu dibuka atau sedang terlihat;
-  // selain itu link halamannya (Store) yang menyala.
+  // Tandai link menu yang aktif. Link dengan data-section (mis. FAQ → 	   			
+  // /store#faq) menyala saat bagian itu dibuka atau sedang terlihat; 	  	  	
+  // selain itu link halamannya (Store) yang menyala. 	  			 
   function markActiveLink(nav) {
     const page = pageSlug();
     const links = [...nav.querySelectorAll("a[data-page]")];
@@ -99,7 +99,7 @@ GT.layout = (function () {
       apply();
     });
 
-    // Ikuti posisi scroll: FAQ menyala saat bagian FAQ terlihat.
+    // Ikuti posisi scroll: FAQ menyala saat bagian FAQ terlihat. 	     	
     if (!sectionLinks.length || !("IntersectionObserver" in window)) return;
     const targets = sectionLinks.map(link => document.getElementById(link.dataset.section)).filter(Boolean);
     const visible = new Set();
@@ -114,9 +114,9 @@ GT.layout = (function () {
     targets.forEach(target => observer.observe(target));
   }
 
-  // ------------------------------------------------
-  // CART DRAWER
-  // ------------------------------------------------
+  // ------------------------------------------------ 	  		  
+  // CART DRAWER 					  
+  // ------------------------------------------------  		  	 
 
   let drawer = null;
   let overlay = null;
@@ -337,9 +337,9 @@ GT.layout = (function () {
     renderCart();
   }
 
-  // Link sosial dari config — yang kosong tidak ditampilkan.
+  // Link sosial dari config — yang kosong tidak ditampilkan.  		 		 
   function renderSocial() {
-    // Dikelola js/site.js (WhatsApp + sosial media dari Admin → Server).
+    // Dikelola js/site.js (WhatsApp + sosial media dari Admin → Server).  		   	
     if (GT.site) return GT.site.renderSocial();
     const list = $("#footerSocial");
     if (!list) return;
@@ -352,8 +352,8 @@ GT.layout = (function () {
     });
   }
 
-  // ------------------------------------------------
-  // MAINTENANCE GUARD
+  // ------------------------------------------------  		   	
+  // MAINTENANCE GUARD        
   // --------------------------------------------------
   // Jika admin menyalakan Maintenance di dashboard, pengunjung
   // dialihkan ke maintenance.html. Pembeli yang sudah punya

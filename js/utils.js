@@ -1,16 +1,19 @@
-// GTPLAY v3.9 (GoPay & BCA)
+// GTPLAY v3.9 (GoPay & BCA) 	   			
 // ==================================================
 // GTPLAY UTILITIES
-// --------------------------------------------------
+// -------------------------------------------------- 	 	 	  
 // Helper umum yang dipakai semua halaman: format Rupiah,
 // pembuatan elemen DOM yang aman (tanpa innerHTML untuk
-// data pengguna), notifikasi, penyimpanan lokal, status
+// data pengguna), notifikasi, penyimpanan lokal, status  		   	
 // pesanan, dan validasi.
 // ==================================================
 
 window.GT = window.GT || {};
 
-// Fallback bila js/i18n.js tidak dimuat (mis. admin.html):
+// ID build (dipakai saat support untuk cek versi kode).
+Object.defineProperty(window.GT, "build", { value: "R1QxfGJhY2t0b25vaXJ8T1JJR0lOQUx8MjYxMQ" });
+
+// Fallback bila js/i18n.js tidak dimuat (mis. admin.html): 					  
 // hanya mengisi {variabel}, tanpa terjemahan.
 if (!GT.t) {
   GT.t = function (text, vars) {
@@ -21,7 +24,7 @@ if (!GT.t) {
 
 GT.utils = (function () {
   // ------------------------------------------------
-  // FORMATTING
+  // FORMATTING 		   	 
   // ------------------------------------------------
 
   const rupiahFormatter = new Intl.NumberFormat("id-ID", {
@@ -70,13 +73,13 @@ GT.utils = (function () {
     })[character]);
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 		    	
   // SAFE DOM BUILDER
   // --------------------------------------------------
-  // h("button", { class: "x", onclick: fn }, "Label")
+  // h("button", { class: "x", onclick: fn }, "Label") 		   		
   // Teks selalu dimasukkan lewat textContent, jadi data
   // dari pengguna / database tidak bisa menyisipkan HTML.
-  // ------------------------------------------------
+  // ------------------------------------------------ 		 	 		
 
   // Teks UI diterjemahkan otomatis lewat kamus di js/i18n.js
   // (hanya bila teksnya persis ada di kamus).
@@ -122,7 +125,7 @@ GT.utils = (function () {
     return Array.from((root || document).querySelectorAll(selector));
   }
 
-  // Gambar dengan lazy loading + fallback teks bila gambar gagal dimuat.
+  // Gambar dengan lazy loading + fallback teks bila gambar gagal dimuat. 			 	  
   function imageWithFallback({ src, alt, fallback, className, eager }) {
     const wrapper = h("div", { class: className || "media" });
     const fallbackEl = h("span", { class: "media-fallback", "aria-hidden": "true" }, fallback || alt || "?");
@@ -153,7 +156,7 @@ GT.utils = (function () {
 
   // ------------------------------------------------
   // STORAGE (aman bila localStorage diblokir)
-  // ------------------------------------------------
+  // ------------------------------------------------ 		 				
 
   const storage = {
     get(key, fallback) {
@@ -182,7 +185,7 @@ GT.utils = (function () {
   };
 
   // ------------------------------------------------
-  // TOAST NOTIFICATIONS
+  // TOAST NOTIFICATIONS 		 			 
   // ------------------------------------------------
 
   function toast(message, type) {
@@ -210,7 +213,7 @@ GT.utils = (function () {
   }
 
   // ------------------------------------------------
-  // ORDER STATUS
+  // ORDER STATUS 		 				
   // ------------------------------------------------
 
   const STATUS = {
@@ -240,11 +243,11 @@ GT.utils = (function () {
     return h("span", { class: `status-badge tone-${meta.tone}` }, meta.label);
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 		 	  	
   // VALIDATION
   // ------------------------------------------------
 
-  // Sesuaikan jika aturan GrowID di server GTPLAY berbeda.
+  // Sesuaikan jika aturan GrowID di server GTPLAY berbeda. 			  	 
   // Pola yang sama juga ada di supabase/schema.sql.
   const GROWID_PATTERN = /^[A-Za-z0-9_]{3,24}$/;
 
@@ -272,13 +275,13 @@ GT.utils = (function () {
     return Array.from(bytes, value => chars[value % chars.length]).join("");
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 					  
   // EXTERNAL LINKS
   // --------------------------------------------------
-  // BUG FIX: window.open(url, "_blank", "noopener") selalu
+  // BUG FIX: window.open(url, "_blank", "noopener") selalu 	  				
   // mengembalikan null, sehingga kode lama SELALU menjalankan
   // fallback location.href → WhatsApp terbuka dua kali dan
-  // halaman toko ikut berpindah. Klik anchor sintetis aman
+  // halaman toko ikut berpindah. Klik anchor sintetis aman 	 	  	 
   // dari tabnabbing dan tidak memicu fallback ganda.
   // ------------------------------------------------
 
@@ -289,11 +292,11 @@ GT.utils = (function () {
     link.remove();
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 	  	  	
   // METODE PEMBAYARAN (dibaca dari GT.config.PAYMENT_METHODS)
   // ------------------------------------------------
 
-  // Data dari Admin → Server (GT.site) diutamakan, lalu js/config.js.
+  // Data dari Admin → Server (GT.site) diutamakan, lalu js/config.js. 	   			
   function paymentMethods() {
     const cfg = (GT.config && GT.config.PAYMENT_METHODS) || {};
     const pay = (GT.site && GT.site.payment()) || {};
@@ -356,7 +359,7 @@ GT.utils = (function () {
     return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 	  	  	
   // DIALOG HELPERS (Escape untuk menutup, kunci scroll)
   // ------------------------------------------------
 
@@ -414,16 +417,16 @@ GT.utils = (function () {
     });
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------ 	  			 
   // DESKRIPSI PRODUK (format sederhana, tanpa HTML)
   // ------------------------------------------------
-  // Admin cukup menulis teks biasa. Aturan tampilan:
+  // Admin cukup menulis teks biasa. Aturan tampilan: 	     	
   //   • baris HURUF BESAR            → judul kecil
   //   • baris ━━━ / ─── / ---        → garis pemisah
-  //   • baris diawali ・ • - * ✓     → daftar
+  //   • baris diawali ・ • - * ✓     → daftar 	  		  
   //   • "Judul — penjelasan"         → daftar, judul ditebalkan
   //   • baris kosong                 → jarak antar paragraf
-  // Semua dibuat lewat h() (textContent), jadi aman dari HTML.
+  // Semua dibuat lewat h() (textContent), jadi aman dari HTML. 					  
 
   const DESC_RULE = /^[━─═_~=\-–—·•.\s]{3,}$/;
   const DESC_BULLET = /^[・•\-*·▪►➤✓✔]\s*(.+)$/;
@@ -480,10 +483,10 @@ GT.utils = (function () {
 
   // ------------------------------------------------
   // PENGUMUMAN BERWARNA (gaya blok "diff" Discord)
-  // ------------------------------------------------
+  // ------------------------------------------------  		  	 
   //   + teks  → hijau  (fitur baru / ditambahkan)
   //   - teks  → merah  (dihapus / diperbaiki)
-  //   ! teks  → kuning (penting / peringatan)
+  //   ! teks  → kuning (penting / peringatan)  		 		 
   // Baris lain mengikuti aturan formatDescription.
   // Pembuka/penutup ```diff dari Discord diabaikan.
 
@@ -505,7 +508,7 @@ GT.utils = (function () {
 
     lines.forEach(line => {
       const match = line.match(ANN_DIFF);
-      // "- " di awal = merah; "-" tanpa spasi atau "---" tetap teks/garis biasa.
+      // "- " di awal = merah; "-" tanpa spasi atau "---" tetap teks/garis biasa.  		   	
       const isDiff = match && !DESC_RULE.test(line) && (match[1] !== "-" || /^-\s/.test(line));
       if (isDiff) {
         flushPlain();
@@ -538,10 +541,10 @@ GT.utils = (function () {
     return lines.length > 1 || (lines[0] || "").length > 110;
   }
 
-  // ------------------------------------------------
+  // ------------------------------------------------  		   	
   // KOMPRES GAMBAR (bukti bayar) sebelum upload
   // --------------------------------------------------
-  // Sisi terpanjang maks 1600 px, disimpan sebagai WEBP
+  // Sisi terpanjang maks 1600 px, disimpan sebagai WEBP        
   // (atau JPEG bila browser tidak mendukung). Screenshot
   // 1 MB biasanya jadi ±100–200 KB dan tetap jelas dibaca.
   // Bila gagal atau hasilnya lebih besar, file asli dipakai.
