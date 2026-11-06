@@ -2496,6 +2496,7 @@
 
     const list = state.coupons;
     panel.replaceChildren(
+      creatorSection(),
       h("div", { class: "admin-top admin-toolbar" },
         h("p", { class: "muted" }, "Buyers enter the code on the payment page while the order is waiting for payment. Usage from expired or cancelled orders is returned automatically."),
         h("button", { type: "button", class: "btn btn-primary btn-sm", onclick: () => openCouponForm(null) }, "+ New coupon")
@@ -2516,7 +2517,10 @@
                   ? `${c.startsAt ? formatDateTime(c.startsAt) : "Now"} → ${c.endsAt ? formatDateTime(c.endsAt) : "No end"}`
                   : "Always";
                 return h("tr", {},
-                  h("td", {}, h("code", { class: "coupon-code" }, c.code), c.note ? h("div", { class: "help clamp-1" }, c.note) : null),
+                  h("td", {},
+                    h("code", { class: "coupon-code" }, c.code),
+                    c.creator ? h("div", { class: "creator-badge" }, `🎥 ${c.creator}`) : null,
+                    c.note ? h("div", { class: "help clamp-1" }, c.note) : null),
                   h("td", {}, couponDiscountText(c)),
                   h("td", { class: "num" }, c.minTotal ? formatRupiah(c.minTotal) : "—"),
                   h("td", {},
@@ -2539,7 +2543,133 @@
     );
   }
 
-  function openCouponForm(coupon) {
+  // ------------------------------------------------
+  // KODE REFERRAL CONTENT CREATOR (migration_v15_referral.sql)
+  // ------------------------------------------------
+
+  function referralLink(code) {
+    return `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+  }
+
+  function creatorStatsLink(code, key) {
+    return `${window.location.origin}/creator?code=${encodeURIComponent(code)}#key=${encodeURIComponent(key)}`;
+  }
+
+  async function copyText(text, label) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(`${label} copied.`, "success");
+    } catch (error) {
+      window.prompt(`Copy ${label.toLowerCase()}:`, text);
+    }
+  }
+
+  // Rentang waktu laporan → [from, to] ISO.
+  function referralRange(period) {
+    const now = new Date();
+    const startOfMonth = (y, m) => new Date(y, m, 1).toISOString();
+    if (period === "month") return [startOfMonth(now.getFullYear(), now.getMonth()), null];
+    if (period === "last-month") return [startOfMonth(now.getFullYear(), now.getMonth() - 1), startOfMonth(now.getFullYear(), now.getMonth())];
+    if (period === "30d") return [new Date(now.getTime() - 30 * 86400000).toISOString(), null];
+    return [null, null];
+  }
+
+  function creatorSection() {
+    const period = h("select", { class: "input input-sm", id: "creatorPeriod", "aria-label": "Period" },
+      h("option", { value: "month" }, "This month"),
+      h("option", { value: "last-month" }, "Last month"),
+      h("option", { value: "30d" }, "Last 30 days"),
+      h("option", { value: "all" }, "All time"));
+    period.value = state.creatorPeriod || "month";
+    const body = h("div", {}, h("p", { class: "help" }, "Loading…"));
+
+    const card = h("section", { class: "card creator-card" },
+      h("div", { class: "creator-head" },
+        h("div", {},
+          h("h2", { class: "card-title" }, "Content creators"),
+          h("p", { class: "help" }, "Give each YouTuber / TikToker their own coupon. Buyers get a discount, you see how many orders and how much revenue each creator brings in.")),
+        period),
+      body);
+
+    async function load() {
+      state.creatorPeriod = period.value;
+      body.replaceChildren(h("p", { class: "help" }, "Loading…"));
+      let rows;
+      try {
+        rows = await admin.referralReport(...referralRange(period.value));
+        state.referralSupported = true;
+      } catch (error) {
+        state.referralSupported = false;
+        body.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {},
+          error.code === "CONFIG"
+            ? "Run supabase/migration_v15_referral.sql in the Supabase SQL Editor to enable creator referral codes."
+            : error.message)));
+        return;
+      }
+
+      if (!rows.length) {
+        body.replaceChildren(h("div", { class: "creator-empty" },
+          h("p", { class: "help" }, "No creator codes yet. Create a coupon and fill in “Content creator”."),
+          h("button", { type: "button", class: "btn btn-outline btn-sm", onclick: () => openCouponForm(null, { creator: true }) }, "+ New creator code")));
+        return;
+      }
+
+      const total = rows.reduce((t, r) => ({
+        orders: t.orders + Number(r.orders || 0),
+        revenue: t.revenue + Number(r.revenue || 0),
+        commission: t.commission + Number(r.commission || 0)
+      }), { orders: 0, revenue: 0, commission: 0 });
+
+      body.replaceChildren(
+        h("div", { class: "creator-stats" },
+          h("div", {}, h("span", { class: "help" }, "Paid orders"), h("strong", {}, String(total.orders))),
+          h("div", {}, h("span", { class: "help" }, "Revenue"), h("strong", {}, formatRupiah(total.revenue))),
+          h("div", {}, h("span", { class: "help" }, "Commission to pay"), h("strong", {}, formatRupiah(total.commission)))
+        ),
+        h("div", { class: "data-table-wrap" },
+          h("table", { class: "data-table creator-table" },
+            h("thead", {}, h("tr", {},
+              h("th", {}, "Creator"), h("th", {}, "Code"), h("th", { class: "num" }, "Paid orders"),
+              h("th", { class: "num" }, "Revenue"), h("th", { class: "num" }, "Commission"), h("th", {}, "Links")
+            )),
+            h("tbody", {}, rows.map(r => h("tr", {},
+              h("td", {}, h("strong", {}, r.creator), r.active ? null : h("div", { class: "help" }, "Inactive")),
+              h("td", {}, h("code", { class: "coupon-code" }, r.code)),
+              h("td", { class: "num" }, String(r.orders), r.pending ? h("div", { class: "help" }, `+${r.pending} pending`) : null),
+              h("td", { class: "num" }, formatRupiah(r.revenue || 0)),
+              h("td", { class: "num" }, r.commissionPct ? formatRupiah(r.commission || 0) : "—",
+                r.commissionPct ? h("div", { class: "help" }, `${r.commissionPct}%`) : null),
+              h("td", {}, h("div", { class: "row-actions" },
+                h("button", { type: "button", class: "btn btn-outline btn-sm", title: "Link for the creator's bio / video description. The code is applied automatically.", onclick: () => copyText(referralLink(r.code), "Referral link") }, "Referral link"),
+                r.statsKey ? h("button", { type: "button", class: "btn btn-ghost btn-sm", title: "Private page where the creator can check their own stats", onclick: () => copyText(creatorStatsLink(r.code, r.statsKey), "Creator stats link") }, "Stats link") : null,
+                h("button", {
+                  type: "button", class: "btn btn-ghost btn-sm", title: "Make a new stats link (the old one stops working)",
+                  onclick: async () => {
+                    const ok = await confirmDialog({ title: `Reset stats link for ${r.creator}?`, message: "The old stats link stops working. Send the new link to the creator.", confirmLabel: "Reset" });
+                    if (!ok) return;
+                    try {
+                      const key = await admin.resetCreatorKey(r.code);
+                      await copyText(creatorStatsLink(r.code, key), "New stats link");
+                      load();
+                    } catch (error) {
+                      toast(error.message, "error");
+                    }
+                  }
+                }, "Reset")
+              ))
+            )))
+          )
+        ),
+        h("p", { class: "help" }, "Revenue = total paid by buyers (after discount) for verified / completed orders in this period.")
+      );
+    }
+
+    period.addEventListener("change", load);
+    load();
+    return card;
+  }
+
+  function openCouponForm(coupon, options) {
     const isEdit = Boolean(coupon);
     const c = coupon || { code: "", kind: "percent", value: "", minTotal: "", maxDiscount: "", maxUses: "", perGrowId: 1, startsAt: null, endsAt: null, active: true, note: "" };
     const num = (id, value, attrs) => h("input", { class: "input", id, type: "number", min: "0", step: "1", inputmode: "numeric", value: value ?? "", ...(attrs || {}) });
@@ -2560,6 +2690,12 @@
     const active = h("input", { type: "checkbox", id: "cActive" });
     active.checked = c.active !== false;
     const note = h("input", { class: "input", id: "cNote", value: c.note || "", maxlength: "120", placeholder: "Contoh: promo event Halloween" });
+    const referralOn = state.referralSupported !== false || Boolean(c.creator);
+    const creator = h("input", { class: "input", id: "cCreator", value: c.creator || "", maxlength: "40", placeholder: "Contoh: Rizky Gaming" });
+    const commission = num("cCommission", c.commissionPct || "", { max: "50", placeholder: "0" });
+    const commissionField = h("div", { class: "field" }, h("label", { class: "label", for: "cCommission" }, "Creator commission (%)"), commission,
+      h("p", { class: "help" }, "Optional, 0–50%. Counted from the amount buyers paid."));
+    if (options && options.creator && !isEdit) setTimeout(() => creator.focus(), 50);
     const preview = h("p", { class: "help coupon-preview" });
     const maxDiscountField = h("div", { class: "field" }, h("label", { class: "label", for: "cMaxDiscount" }, "Max. discount (Rp)"), maxDiscount);
     const valueLabel = h("label", { class: "label", for: "cValue" });
@@ -2571,6 +2707,7 @@
       const isPercent = kind.value === "percent";
       valueLabel.textContent = isPercent ? "Discount (%) — 1 to 90" : "Discount (Rp)";
       maxDiscountField.hidden = !isPercent;
+      commissionField.hidden = !creator.value.trim();
       value.max = isPercent ? "90" : "";
       const v = Number(value.value) || 0;
       const sample = Math.max(Number(minTotal.value) || 0, 50000);
@@ -2581,7 +2718,7 @@
         ? `Example: an order of ${formatRupiah(sample)} → buyer pays ${formatRupiah(sample - d)} (saves ${formatRupiah(d)}).`
         : "";
     }
-    [code, kind, value, maxDiscount, minTotal].forEach(el => el.addEventListener("input", update));
+    [code, kind, value, maxDiscount, minTotal, creator].forEach(el => el.addEventListener("input", update));
     kind.addEventListener("change", update);
 
     const field = (label, control, help) => h("div", { class: "field" }, label, control, help ? h("p", { class: "help" }, help) : null);
@@ -2604,7 +2741,9 @@
           startsAt: iso(startsAt),
           endsAt: iso(endsAt),
           active: active.checked,
-          note: note.value
+          note: note.value,
+          creator: referralOn ? creator.value : "",
+          commissionPct: referralOn && creator.value.trim() ? commission.value : ""
         };
         submit.disabled = true;
         try {
@@ -2628,6 +2767,8 @@
         field(lbl("cPerGrowId", "Uses per GrowID"), perGrowId, "Empty = unlimited."),
         field(lbl("cStarts", "Starts"), startsAt, "Empty = immediately."),
         field(lbl("cEnds", "Ends"), endsAt, "Empty = never."),
+        referralOn ? field(lbl("cCreator", "Content creator (optional)"), creator, "Fill in to make this a creator referral code. Shows up in the Content creators report.") : null,
+        referralOn ? commissionField : null,
         h("div", { class: "field span-2" }, lbl("cNote", "Note (admin only)"), note),
         h("div", { class: "field span-2" }, h("label", { class: "check-row" }, active, " Active — buyers can use this coupon"))
       ),

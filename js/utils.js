@@ -267,6 +267,33 @@ GT.utils = (function () {
   }
 
   // Kode acak berbasis crypto (bukan Math.random).
+  // Kode referral creator dari link ?ref=KODE — disimpan 30 hari
+  // lalu dipasang otomatis di halaman pembayaran.
+  const REF_KEY = "gtplay:ref";
+  const REF_TRIED_KEY = "gtplay:ref-tried";
+  const REF_DAYS = 30;
+  const referral = {
+    capture() {
+      try {
+        const code = (new URLSearchParams(window.location.search).get("ref") || "").trim().toUpperCase();
+        if (/^[A-Z0-9_-]{3,24}$/.test(code)) storage.set(REF_KEY, { code, at: Date.now() });
+      } catch (error) { /* abaikan */ }
+    },
+    get() {
+      const saved = storage.get(REF_KEY, null);
+      if (!saved || !saved.code || Date.now() - Number(saved.at || 0) > REF_DAYS * 86400000) return null;
+      return saved.code;
+    },
+    // true = belum pernah dicoba untuk pesanan ini.
+    markTried(orderId) {
+      const tried = storage.get(REF_TRIED_KEY, []);
+      const list = Array.isArray(tried) ? tried : [];
+      if (list.includes(orderId)) return false;
+      storage.set(REF_TRIED_KEY, list.concat(orderId).slice(-30));
+      return true;
+    }
+  };
+
   function randomCode(length, alphabet) {
     const chars = alphabet || "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const bytes = new Uint32Array(length);
@@ -670,6 +697,7 @@ GT.utils = (function () {
     statusBadge,
     validateGrowId,
     randomCode,
+    referral,
     openExternal,
     whatsappURL,
     storeName,

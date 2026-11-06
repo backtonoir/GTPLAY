@@ -157,6 +157,21 @@
     );
   }
 
+  // Kode referral creator dari link ?ref=KODE (lihat layout.js)
+  // dipasang otomatis sekali per pesanan.
+  async function autoApplyReferral() {
+    const ref = GT.utils.referral && GT.utils.referral.get();
+    if (!ref || !order || order.status !== "pending_payment" || !("discount" in order) || order.couponCode) return;
+    if (!GT.utils.referral.markTried(order.id)) return;
+    try {
+      order = await GT.api.applyCoupon(orderId, accessCode, ref);
+      toast(GT.t("Creator code {code} applied — you save {amount}", { code: ref, amount: formatRupiah(order.discount) }), "success");
+      render();
+    } catch (error) {
+      /* Kode tidak berlaku (habis / min. belanja) → pembeli tetap bisa isi manual. */
+    }
+  }
+
   function whatsappMessage() {
     const lines = order.items.map(item => `• ${item.name} x${item.quantity}\n  ${formatRupiah(item.subtotal)}`);
 
@@ -575,6 +590,7 @@
       const changed = !order || next.status !== order.status;
       order = next;
       if (!silent || changed) render();
+      if (!silent) autoApplyReferral();
       if (silent && changed) toast(GT.t("Order status: {status}", { status: GT.t(GT.utils.STATUS[order.status].label) }), "info");
     } catch (error) {
       if (silent) return;

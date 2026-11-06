@@ -68,6 +68,7 @@ GT.api = (function () {
     INVALID_DISCOUNT: "Discount must be a whole number from 0 to 90 percent.",
     INVALID_FEEDBACK: "Pick a type and write 10–500 characters.",
     COUPON_NOT_FOUND: "Coupon code not found.",
+    CREATOR_NOT_FOUND: "This creator link is invalid or has been reset. Ask the admin for a new link.",
     COUPON_INACTIVE: "This coupon is not active.",
     COUPON_NOT_STARTED: "This coupon can't be used yet.",
     COUPON_EXPIRED: "This coupon has expired.",
@@ -212,8 +213,12 @@ GT.api = (function () {
       startsAt: c.startsAt || null,
       endsAt: c.endsAt || null,
       active: c.active !== false,
-      note: String(c.note || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim()
+      note: String(c.note || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim(),
+      // Kode referral content creator (migration_v15).
+      creator: String(c.creator || "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim() || null,
+      commissionPct: int(c.commissionPct) || 0
     };
+    if (!out.creator) out.commissionPct = 0;
     const posInt = v => Number.isInteger(v) && v > 0;
     const okOptional = v => v === null || posInt(v);
     const time = v => (v ? new Date(v).getTime() : null);
@@ -223,7 +228,9 @@ GT.api = (function () {
         !okOptional(out.maxDiscount) || !okOptional(out.maxUses) || !okOptional(out.perGrowId) ||
         (out.startsAt && Number.isNaN(time(out.startsAt))) || (out.endsAt && Number.isNaN(time(out.endsAt))) ||
         (out.startsAt && out.endsAt && time(out.endsAt) <= time(out.startsAt)) ||
-        out.note.length > 120) {
+        out.note.length > 120 ||
+        (out.creator && out.creator.length > 40) ||
+        !Number.isInteger(out.commissionPct) || out.commissionPct < 0 || out.commissionPct > 50) {
       fail("INVALID_COUPON");
     }
     return out;
@@ -488,8 +495,23 @@ GT.api = (function () {
         ...coupon,
         used: couponUsed(orders, coupon.code, null, null),
         paid: paid.length,
-        discountGiven: paid.reduce((sum, o) => sum + (o.discount || 0), 0)
+        discountGiven: paid.reduce((sum, o) => sum + (o.discount || 0), 0),
+        revenue: paid.reduce((sum, o) => sum + (o.total || 0), 0),
+        creator: coupon.creator || null,
+        commissionPct: coupon.commissionPct || 0,
+        statsKey: coupon.statsKey || null
       };
+    }
+
+    const PAID = ["payment_verified", "processing", "completed"];
+
+    function creatorKey() {
+      return randomCode(10) + randomCode(10);
+    }
+
+    function maskGrowId(id) {
+      const s = String(id || "");
+      return s.length <= 3 ? s.slice(0, 1) + "**" : s.slice(0, 2) + "*".repeat(Math.min(s.length - 3, 6)) + s.slice(-1);
     }
 
     function loadFeedback() {
@@ -838,6 +860,30 @@ GT.api = (function () {
         return publicOrder(order);
       },
 
+      // Statistik content creator (halaman /creator).
+      async creatorStats(code, key) {
+        const c = loadCoupons().find(x => x.code === String(code || "").trim().toUpperCase());
+        if (!c || !c.creator || !c.statsKey || c.statsKey !== key) fail("CREATOR_NOT_FOUND");
+        const orders = Object.values(sweepExpired()).filter(o => o.couponCode === c.code);
+        const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+        const sum = list => {
+          const revenue = list.reduce((t, o) => t + (o.total || 0), 0);
+          return { orders: list.length, revenue, commission: Math.floor(revenue * (c.commissionPct || 0) / 100) };
+        };
+        const paid = orders.filter(o => PAID.includes(o.status));
+        return {
+          code: c.code, creator: c.creator, active: c.active !== false, kind: c.kind, value: c.value,
+          maxDiscount: c.maxDiscount || null, commissionPct: c.commissionPct || 0,
+          month: sum(paid.filter(o => new Date(o.createdAt) >= monthStart)),
+          allTime: sum(paid),
+          recent: orders
+            .filter(o => PAID.includes(o.status) || ["pending_payment", "payment_submitted"].includes(o.status))
+            .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+            .slice(0, 20)
+            .map(o => ({ growId: maskGrowId(o.growId), total: o.total, status: PAID.includes(o.status) ? "paid" : "pending", createdAt: o.createdAt }))
+        };
+      },
+
       // Login pembeli butuh Supabase Auth → tidak tersedia di demo.
       async linkOrder() { fail("ACCOUNTS_DISABLED"); },
       async listMyOrders() { fail("ACCOUNTS_DISABLED"); },
@@ -1039,8 +1085,39 @@ GT.api = (function () {
           }
           const existing = list.find(c => c.code === (orig || coupon.code));
           const next = list.filter(c => c.code !== (orig || coupon.code));
-          next.push({ ...coupon, createdAt: existing ? existing.createdAt : new Date().toISOString() });
+          const statsKey = (existing && existing.statsKey) || (coupon.creator ? creatorKey() : null);
+          next.push({ ...coupon, statsKey, createdAt: existing ? existing.createdAt : new Date().toISOString() });
           storage.set(COUPONS_KEY, next);
+        },
+
+        async resetCreatorKey(code) {
+          const key = creatorKey();
+          let found = false;
+          storage.set(COUPONS_KEY, loadCoupons().map(c => {
+            if (c.code !== code || !c.creator) return c;
+            found = true;
+            return { ...c, statsKey: key };
+          }));
+          if (!found) fail("COUPON_NOT_FOUND");
+          return key;
+        },
+
+        async referralReport(from, to) {
+          const orders = Object.values(sweepExpired());
+          const inRange = o => (!from || o.createdAt >= from) && (!to || o.createdAt < to);
+          return loadCoupons().filter(c => c.creator).map(c => {
+            const mine = orders.filter(o => o.couponCode === c.code && inRange(o));
+            const paid = mine.filter(o => PAID.includes(o.status));
+            const revenue = paid.reduce((sum, o) => sum + (o.total || 0), 0);
+            return {
+              code: c.code, creator: c.creator, commissionPct: c.commissionPct || 0, active: c.active !== false, statsKey: c.statsKey || null,
+              orders: paid.length,
+              pending: mine.filter(o => ["pending_payment", "payment_submitted"].includes(o.status)).length,
+              revenue,
+              discount: paid.reduce((sum, o) => sum + (o.discount || 0), 0),
+              commission: Math.floor(revenue * (c.commissionPct || 0) / 100)
+            };
+          }).sort((a, b) => (b.revenue - a.revenue) || a.creator.localeCompare(b.creator));
         },
 
         async setCouponActive(code, active) {
@@ -1533,6 +1610,16 @@ GT.api = (function () {
         return mapOrder(await rpc("cancel_order", { p_order_id: orderId, p_access_code: accessCode }));
       },
 
+      // ---- Statistik content creator (migration_v15) ----
+      async creatorStats(code, key) {
+        try {
+          return await rpc("creator_stats", { p_code: code, p_key: key });
+        } catch (error) {
+          if (error.code === "CONFIG") fail("CREATOR_NOT_FOUND");
+          throw error;
+        }
+      },
+
       // ---- Akun pembeli (login Discord, migration_v13) ----
       async linkOrder(orderId, accessCode) {
         try {
@@ -1866,6 +1953,15 @@ GT.api = (function () {
 
         async deleteCoupon(code) {
           return rpc("admin_delete_coupon", { p_code: code });
+        },
+
+        // ---- Referral creator (migration_v15) ----
+        async resetCreatorKey(code) {
+          return rpc("admin_reset_creator_key", { p_code: code });
+        },
+
+        async referralReport(from, to) {
+          return rpc("admin_referral_report", { p_from: from || null, p_to: to || null });
         },
 
         async setFeedbackStatus(id, status) {

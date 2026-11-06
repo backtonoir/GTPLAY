@@ -362,7 +362,7 @@ GT.layout = (function () {
   // Pesanan baru juga ditolak oleh server (GT:MAINTENANCE).
   // ------------------------------------------------
 
-  const MAINTENANCE_EXEMPT = ["payment", "track", "account"];
+  const MAINTENANCE_EXEMPT = ["payment", "track", "account", "creator"];
 
   function maintenanceBanner(text) {
     if (document.getElementById("maintenanceBanner")) return;
@@ -455,6 +455,7 @@ GT.layout = (function () {
   }
 
   function init(options) {
+    if (GT.utils.referral) GT.utils.referral.capture();
     maintenanceGuard();
     initAccountButton();
     initNav();
