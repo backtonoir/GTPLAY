@@ -31,6 +31,13 @@ language sql
 immutable
 as $$ select p_status in ('payment_verified', 'processing', 'completed') $$;
 
+-- Kolom orders.status bertipe enum order_status.
+create or replace function public.gt_paid_status(p_status public.order_status)
+returns boolean
+language sql
+immutable
+as $$ select p_status::text in ('payment_verified', 'processing', 'completed') $$;
+
 -- --------------------------------------------------
 -- Daftar kupon (+ data creator)
 -- --------------------------------------------------
@@ -287,6 +294,7 @@ end $$;
 -- Hak akses
 -- --------------------------------------------------
 revoke all on function public.gt_paid_status(text)                              from public, anon, authenticated;
+revoke all on function public.gt_paid_status(public.order_status)               from public, anon, authenticated;
 revoke all on function public.admin_list_coupons()                              from public, anon;
 revoke all on function public.admin_upsert_coupon(jsonb, text)                  from public, anon;
 revoke all on function public.admin_reset_creator_key(text)                     from public, anon;

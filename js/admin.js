@@ -194,7 +194,7 @@
       GT.api.getStoreStatus().catch(() => null),
       admin.listReviews().catch(() => null),
       admin.listFeedback().catch(() => null),
-      admin.listCoupons().catch(() => null)
+      admin.listCoupons().catch(error => { state.couponsError = error; return null; })
     ]);
     state.orders = orders;
     state.products = products;
@@ -2468,7 +2468,13 @@
 
   function renderCoupons(panel) {
     if (state.couponsUnavailable) {
-      panel.replaceChildren(h("div", { class: "notice notice-warn" }, h("p", {}, "Coupons need the latest database. Run supabase/migration_v9_coupons.sql in the Supabase SQL Editor.")));
+      const err = state.couponsError;
+      const gtPaid = err && /gt_paid_status/.test(err.message || "");
+      panel.replaceChildren(h("div", { class: "notice notice-warn" },
+        h("p", {}, gtPaid
+          ? "Run supabase/migration_v15b_referral_fix.sql in the Supabase SQL Editor to fix the Coupons tab."
+          : "Coupons need the latest database. Run supabase/migration_v9_coupons.sql in the Supabase SQL Editor."),
+        err && err.message ? h("p", { class: "help mono" }, err.message.slice(0, 300)) : null));
       return;
     }
 
