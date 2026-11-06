@@ -65,6 +65,15 @@
   "functions": {
     "api/og-image.js": {
       "includeFiles": "js/config.js"
+    },
+    "api/keepalive.js": {
+      "includeFiles": "js/config.js"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/keepalive",
+      "schedule": "17 20 * * *"
+    }
+  ]
 }
